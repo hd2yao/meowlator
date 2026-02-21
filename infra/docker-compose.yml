@@ -37,6 +37,7 @@ services:
       context: ../services/api
       dockerfile: Dockerfile
     container_name: meowlator-api
+    restart: on-failure
     environment:
       API_ADDR: ":8080"
       INFERENCE_URL: "http://inference:8081"
@@ -49,9 +50,12 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - inference
-      - mysql
-      - redis
+      inference:
+        condition: service_started
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
 volumes:
   mysql_data:
