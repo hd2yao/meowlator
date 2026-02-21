@@ -1,0 +1,57 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: meowlator-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: meowlator
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: meowlator-redis
+    ports:
+      - "6379:6379"
+
+  inference:
+    build:
+      context: ../services/inference
+      dockerfile: Dockerfile
+    container_name: meowlator-inference
+    environment:
+      INFERENCE_ADDR: ":8081"
+    ports:
+      - "8081:8081"
+
+  api:
+    build:
+      context: ../services/api
+      dockerfile: Dockerfile
+    container_name: meowlator-api
+    environment:
+      API_ADDR: ":8080"
+      INFERENCE_URL: "http://inference:8081"
+      MYSQL_DSN: "root:root@tcp(mysql:3306)/meowlator?parseTime=true&charset=utf8mb4"
+      REDIS_ADDR: "redis:6379"
+      DEFAULT_RETENTION_DAYS: "7"
+      EDGE_ACCEPT_THRESHOLD: "0.7"
+      CLOUD_FALLBACK_THRESHOLD: "0.45"
+      MODEL_VERSION: "mobilenetv3-small-int8-v1"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - inference
+      - mysql
+      - redis
+
+volumes:
+  mysql_data:

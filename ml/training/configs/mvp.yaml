@@ -1,0 +1,21 @@
+model:
+  backbone: mobilenetv3_small
+  input_size: 224
+  quantization: int8
+
+data:
+  public_datasets:
+    - oxford_iiit_pet
+  feedback_weights:
+    corrected: 1.0
+    confirmed: 0.6
+    model_only: 0.2
+
+training:
+  batch_size: 64
+  lr: 0.001
+  epochs: 10
+
+thresholds:
+  edge_accept: 0.70
+  cloud_fallback: 0.45

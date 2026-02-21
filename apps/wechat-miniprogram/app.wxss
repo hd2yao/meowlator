@@ -1,0 +1,18 @@
+page {
+  background: linear-gradient(180deg, #fff6dd 0%, #fff2f7 100%);
+  color: #2a2a2a;
+  font-family: "PingFang SC", "Hiragino Sans GB", sans-serif;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.05);
+}
+
+.button-primary {
+  background: #ff7a59;
+  color: #fff;
+  border-radius: 999rpx;
+}

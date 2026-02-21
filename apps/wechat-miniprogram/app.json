@@ -1,0 +1,14 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/result/result"
+  ],
+  "window": {
+    "navigationBarTitleText": "Meowlator",
+    "navigationBarBackgroundColor": "#ffd166",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#fff6dd"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

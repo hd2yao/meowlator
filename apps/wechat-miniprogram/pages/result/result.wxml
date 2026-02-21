@@ -1,0 +1,29 @@
+<view class="page" wx:if="{{result}}">
+  <view class="card">
+    <view class="section-title">猫猫台词</view>
+    <view class="cat-line">{{copy.catLine}}</view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">依据解释</view>
+    <view>{{copy.evidence}}</view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">意图 Top3</view>
+    <view wx:for="{{result.intentTop3}}" wx:key="label">
+      {{item.label}} - {{(item.prob * 100).toFixed(0)}}%
+    </view>
+  </view>
+
+  <view class="feedback-row">
+    <button bindtap="onCorrect">准</button>
+    <button bindtap="onWrong">不准</button>
+  </view>
+
+  <picker mode="selector" range="{{intentOptions}}" bindchange="onPickTrueLabel" wx:if="{{showLabelPicker}}">
+    <view class="picker">选择真实意图：{{pickedLabel || '点击选择'}}</view>
+  </picker>
+
+  <button class="button-primary" bindtap="onShareTap">生成分享</button>
+</view>

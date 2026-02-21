@@ -1,0 +1,28 @@
+# OS
+.DS_Store
+
+# Go
+bin/
+*.test
+coverage.out
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node / Mini Program
+node_modules/
+miniprogram_npm/
+
+# Local env
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+
+# Build outputs
+/tmp/
+dist/

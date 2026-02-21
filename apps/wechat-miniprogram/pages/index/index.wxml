@@ -1,0 +1,14 @@
+<view class="page">
+  <view class="card hero">
+    <view class="title">Meowlator</view>
+    <view class="subtitle">拍一张主子，翻译它此刻的意图。</view>
+  </view>
+
+  <button class="button-primary" bindtap="onSelectImage" loading="{{loading}}">
+    {{loading ? '识别中...' : '上传猫图开始翻译'}}
+  </button>
+
+  <view class="card" wx:if="{{message}}">
+    <text>{{message}}</text>
+  </view>
+</view>

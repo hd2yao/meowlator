@@ -1,0 +1,13 @@
+{
+  "miniprogramRoot": "./",
+  "projectname": "meowlator",
+  "appid": "touristappid",
+  "setting": {
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "newFeature": true
+  },
+  "compileType": "miniprogram"
+}

@@ -1,0 +1,20 @@
+.page {
+  padding: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.hero {
+  background: radial-gradient(circle at top left, #ffe9c6, #fff);
+}
+
+.title {
+  font-size: 42rpx;
+  font-weight: 700;
+}
+
+.subtitle {
+  margin-top: 10rpx;
+  color: #666;
+}

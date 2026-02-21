@@ -1,0 +1,12 @@
+{
+  "model_version": "mobilenetv3-small-int8-v1",
+  "task_scope": "intent_state_mvp",
+  "artifact_uri": "s3://meowlator-models/mobilenetv3-small-int8-v1.onnx",
+  "metrics": {
+    "top1": 0.55,
+    "top3": 0.8,
+    "latency_p95_ms": 2400
+  },
+  "rollout_ratio": 1.0,
+  "status": "ACTIVE"
+}
