@@ -29,6 +29,7 @@ services:
     container_name: meowlator-inference
     environment:
       INFERENCE_ADDR: ":8081"
+      MODEL_PRIORS_PATH: ""
     ports:
       - "8081:8081"
 

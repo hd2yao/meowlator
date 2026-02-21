@@ -5,7 +5,8 @@ import (
 )
 
 type Config struct {
-	Addr string
+	Addr            string
+	ModelPriorsPath string
 }
 
 func Load() Config {
@@ -13,5 +14,8 @@ func Load() Config {
 	if addr == "" {
 		addr = ":8081"
 	}
-	return Config{Addr: addr}
+	return Config{
+		Addr:            addr,
+		ModelPriorsPath: os.Getenv("MODEL_PRIORS_PATH"),
+	}
 }
