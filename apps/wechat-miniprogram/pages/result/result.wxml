@@ -11,8 +11,8 @@
 
   <view class="card">
     <view class="section-title">意图 Top3</view>
-    <view wx:for="{{result.intentTop3}}" wx:key="label">
-      {{item.label}} - {{(item.prob * 100).toFixed(0)}}%
+    <view wx:for="{{intentTop3Display}}" wx:key="label">
+      {{item.label}} - {{item.probPercent}}%
     </view>
   </view>
 
@@ -22,7 +22,7 @@
   </view>
 
   <picker mode="selector" range="{{intentOptions}}" bindchange="onPickTrueLabel" wx:if="{{showLabelPicker}}">
-    <view class="picker">选择真实意图：{{pickedLabel || '点击选择'}}</view>
+    <view class="picker">选择真实意图：{{pickedLabelText}}</view>
   </picker>
 
   <button class="button-primary" bindtap="onShareTap">生成分享</button>

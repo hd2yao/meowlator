@@ -14,6 +14,7 @@ __pycache__/
 # Node / Mini Program
 node_modules/
 miniprogram_npm/
+apps/wechat-miniprogram/project.private.config.json
 
 # Local env
 .env
@@ -26,3 +27,8 @@ miniprogram_npm/
 # Build outputs
 /tmp/
 dist/
+
+# ML local assets (do not commit datasets/artifacts)
+ml/training/data/
+ml/training/artifacts/
+ml/training/logs/

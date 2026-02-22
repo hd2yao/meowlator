@@ -1,7 +1,6 @@
-import { submitFeedback } from "../../utils/api";
-import type { FinalizeResponse, IntentLabel } from "../../types/shared";
+const { submitFeedback } = require("../../utils/api");
 
-const INTENTS: IntentLabel[] = [
+const INTENTS = [
   "FEEDING",
   "SEEK_ATTENTION",
   "WANT_PLAY",
@@ -14,8 +13,8 @@ const INTENTS: IntentLabel[] = [
 
 Page({
   data: {
-    result: null as FinalizeResponse["result"] | null,
-    intentTop3Display: [] as Array<{ label: string; probPercent: number }>,
+    result: null,
+    intentTop3Display: [],
     copy: { catLine: "", evidence: "", shareTitle: "" },
     sampleId: "",
     showLabelPicker: false,
@@ -25,7 +24,7 @@ Page({
   },
 
   onLoad() {
-    const app = getApp<{ globalData: { lastResult?: FinalizeResponse } }>();
+    const app = getApp();
     const payload = app.globalData.lastResult;
     if (!payload) {
       wx.showToast({ title: "暂无结果", icon: "none" });
@@ -54,17 +53,17 @@ Page({
       wx.showToast({ title: "先选真实意图", icon: "none" });
       return;
     }
-    await this.sendFeedback(false, this.data.pickedLabel as IntentLabel);
+    await this.sendFeedback(false, this.data.pickedLabel);
   },
 
-  onPickTrueLabel(e: WechatMiniprogram.PickerChange) {
+  onPickTrueLabel(e) {
     const index = Number(e.detail.value);
     this.setData({ pickedLabel: INTENTS[index], pickedLabelText: INTENTS[index] });
   },
 
-  async sendFeedback(isCorrect: boolean, trueLabel?: IntentLabel) {
+  async sendFeedback(isCorrect, trueLabel) {
     try {
-      const app = getApp<{ globalData: { userId: string } }>();
+      const app = getApp();
       await submitFeedback({
         sampleId: this.data.sampleId,
         userId: app.globalData.userId,

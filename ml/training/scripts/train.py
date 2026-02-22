@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
+import warnings
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Tuple
 
@@ -173,6 +174,36 @@ def build_datasets(dataset_root: pathlib.Path, input_size: int, download: bool):
     )
 
 
+def build_fake_datasets(input_size: int):
+    import torch
+    from torchvision import datasets, transforms
+
+    transform = transforms.Compose(
+        [
+            transforms.Resize((input_size, input_size)),
+            transforms.ToTensor(),
+        ]
+    )
+
+    class FakeIntentDataset(torch.utils.data.Dataset):
+        def __init__(self, size: int):
+            self.base = datasets.FakeData(
+                size=size,
+                image_size=(3, input_size, input_size),
+                num_classes=len(INTENT_LABELS),
+                transform=transform,
+            )
+
+        def __len__(self):
+            return len(self.base)
+
+        def __getitem__(self, idx):
+            image, label = self.base[idx]
+            return image, torch.tensor(int(label), dtype=torch.long)
+
+    return FakeIntentDataset(size=512), FakeIntentDataset(size=128)
+
+
 def compute_intent_priors(dataset) -> Dict[str, float]:
     counts = [0 for _ in INTENT_LABELS]
     for _, label in dataset:
@@ -185,6 +216,7 @@ def compute_intent_priors(dataset) -> Dict[str, float]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", choices=["oxford", "fake"], default="oxford")
     parser.add_argument("--dataset-root", type=pathlib.Path, required=True)
     parser.add_argument("--output-dir", type=pathlib.Path, required=True)
     parser.add_argument("--model-version", default="mobilenetv3-small-v2")
@@ -214,23 +246,36 @@ def main() -> None:
     else:
         device = torch.device(args.device)
 
-    train_ds, test_ds = build_datasets(
-        dataset_root=args.dataset_root,
-        input_size=args.input_size,
-        download=args.download,
-    )
+    if args.dataset == "fake":
+        train_ds, test_ds = build_fake_datasets(input_size=args.input_size)
+        dataset_name = "fake_intent_smoke"
+    else:
+        train_ds, test_ds = build_datasets(
+            dataset_root=args.dataset_root,
+            input_size=args.input_size,
+            download=args.download,
+        )
+        dataset_name = "oxford_iiit_pet_pseudo_intent"
+
+    num_workers = max(0, int(args.num_workers))
+    if num_workers > 0:
+        warnings.warn(
+            "Current dataset wrappers are not multiprocess-pickle safe in this environment; "
+            "forcing num_workers=0 for stable training."
+        )
+        num_workers = 0
 
     train_loader = DataLoader(
         train_ds,
         batch_size=args.batch_size,
         shuffle=True,
-        num_workers=args.num_workers,
+        num_workers=num_workers,
     )
     test_loader = DataLoader(
         test_ds,
         batch_size=args.batch_size,
         shuffle=False,
-        num_workers=args.num_workers,
+        num_workers=num_workers,
     )
 
     weights = models.MobileNet_V3_Small_Weights.IMAGENET1K_V1 if args.pretrained else None
@@ -286,7 +331,7 @@ def main() -> None:
 
     metrics = {
         "model_version": args.model_version,
-        "dataset": "oxford_iiit_pet_pseudo_intent",
+        "dataset": dataset_name,
         "epochs": args.epochs,
         "batch_size": args.batch_size,
         "best_eval_top1": round(best_eval_top1, 6),
@@ -307,7 +352,7 @@ def main() -> None:
             {
                 "model_version": args.model_version,
                 "intent_priors": priors,
-                "source": "oxford_iiit_pet_pseudo_intent",
+                "source": dataset_name,
             },
             f,
             ensure_ascii=True,

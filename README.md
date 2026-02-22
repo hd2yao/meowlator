@@ -43,6 +43,12 @@ make test
 make train-vision
 ```
 
+Quick smoke training (small synthetic dataset, fast sanity check):
+
+```bash
+make train-vision-smoke
+```
+
 2. Export ONNX (and INT8 quantized ONNX):
 
 ```bash
