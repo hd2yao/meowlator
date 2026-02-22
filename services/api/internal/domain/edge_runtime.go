@@ -5,9 +5,12 @@ import "fmt"
 type EdgeRuntime struct {
 	Engine        string `json:"engine"`
 	ModelVersion  string `json:"modelVersion"`
+	ModelHash     string `json:"modelHash,omitempty"`
+	InputShape    string `json:"inputShape,omitempty"`
 	LoadMS        int    `json:"loadMs"`
 	InferMS       int    `json:"inferMs"`
 	DeviceModel   string `json:"deviceModel"`
+	FailureCode   string `json:"failureCode,omitempty"`
 	FailureReason string `json:"failureReason,omitempty"`
 }
 
@@ -33,9 +36,12 @@ func (e *EdgeRuntime) Validate() error {
 type EdgeMeta struct {
 	Engine         string `json:"engine"`
 	ModelVersion   string `json:"modelVersion"`
+	ModelHash      string `json:"modelHash,omitempty"`
+	InputShape     string `json:"inputShape,omitempty"`
 	LoadMS         int    `json:"loadMs"`
 	InferMS        int    `json:"inferMs"`
 	DeviceModel    string `json:"deviceModel"`
+	FailureCode    string `json:"failureCode,omitempty"`
 	FailureReason  string `json:"failureReason,omitempty"`
 	FallbackUsed   bool   `json:"fallbackUsed"`
 	UsedEdgeResult bool   `json:"usedEdgeResult"`

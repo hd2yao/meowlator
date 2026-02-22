@@ -17,6 +17,13 @@ type Repository interface {
 	SaveFeedback(ctx context.Context, fb *domain.Feedback) error
 	DeleteSample(ctx context.Context, sampleID string) error
 	UserFeedbackStats(ctx context.Context, userID string) (total int, extremeRatio float64, suspicious bool)
+	DeleteExpiredSamples(ctx context.Context, expireBefore int64) (int, error)
+	CreateSession(ctx context.Context, session *domain.UserSession) error
+	GetSession(ctx context.Context, token string) (*domain.UserSession, error)
+	UpsertModelRegistry(ctx context.Context, model domain.ModelRegistry) error
+	UpdateModelStatus(ctx context.Context, modelVersion string, status domain.ModelStatus, rolloutRatio float64, targetBucket int) error
+	GetActiveModel(ctx context.Context) (*domain.ModelRegistry, error)
+	SaveRiskEvent(ctx context.Context, sampleID string, risk *domain.RiskInfo) error
 }
 
 type InferenceClient interface {
@@ -40,9 +47,10 @@ type Service struct {
 	retentionDays int
 	modelVersion  string
 	painRisk      bool
+	edgeWhitelist []string
 }
 
-func NewService(repo Repository, inference InferenceClient, copyClient CopyClient, thresholds Thresholds, retentionDays int, modelVersion string, painRisk bool) *Service {
+func NewService(repo Repository, inference InferenceClient, copyClient CopyClient, thresholds Thresholds, retentionDays int, modelVersion string, painRisk bool, edgeWhitelist []string) *Service {
 	if retentionDays <= 0 {
 		retentionDays = 7
 	}
@@ -57,6 +65,7 @@ func NewService(repo Repository, inference InferenceClient, copyClient CopyClien
 		retentionDays: retentionDays,
 		modelVersion:  modelVersion,
 		painRisk:      painRisk,
+		edgeWhitelist: append([]string{}, edgeWhitelist...),
 	}
 }
 
@@ -183,9 +192,12 @@ func (s *Service) FinalizeInference(ctx context.Context, in FinalizeInput) (*Fin
 		finalResult.EdgeMeta = &domain.EdgeMeta{
 			Engine:         in.EdgeRuntime.Engine,
 			ModelVersion:   in.EdgeRuntime.ModelVersion,
+			ModelHash:      in.EdgeRuntime.ModelHash,
+			InputShape:     in.EdgeRuntime.InputShape,
 			LoadMS:         in.EdgeRuntime.LoadMS,
 			InferMS:        in.EdgeRuntime.InferMS,
 			DeviceModel:    in.EdgeRuntime.DeviceModel,
+			FailureCode:    in.EdgeRuntime.FailureCode,
 			FailureReason:  in.EdgeRuntime.FailureReason,
 			FallbackUsed:   fallbackUsed,
 			UsedEdgeResult: finalResult.Source == "EDGE",
@@ -193,6 +205,7 @@ func (s *Service) FinalizeInference(ctx context.Context, in FinalizeInput) (*Fin
 	}
 	if s.painRisk {
 		finalResult.Risk = domain.EvaluatePainRisk(finalResult)
+		_ = s.repo.SaveRiskEvent(ctx, in.SampleID, finalResult.Risk)
 	}
 
 	finalResult.CopyStyleVersion = "v1"
@@ -265,11 +278,21 @@ type ClientConfigOutput struct {
 	ModelVersion           string   `json:"modelVersion"`
 	ABBucket               int      `json:"abBucket"`
 	ShareTemplates         []string `json:"shareTemplates"`
+	EdgeDeviceWhitelist    []string `json:"edgeDeviceWhitelist"`
+	ModelRollout           struct {
+		ActiveModel  string  `json:"activeModel"`
+		RolloutRatio float64 `json:"rolloutRatio"`
+		TargetBucket int     `json:"targetBucket"`
+	} `json:"modelRollout"`
+	RiskEnabled   bool `json:"riskEnabled"`
+	ABBucketRules struct {
+		TotalBuckets int `json:"totalBuckets"`
+	} `json:"abBucketRules"`
 }
 
 func (s *Service) ClientConfig(userID string) ClientConfigOutput {
 	bucket := repository.ABBucket(userID, 3)
-	return ClientConfigOutput{
+	out := ClientConfigOutput{
 		EdgeAcceptThreshold:    s.thresholds.EdgeAccept,
 		CloudFallbackThreshold: s.thresholds.CloudFallback,
 		CopyStyleVersion:       "v1",
@@ -280,7 +303,111 @@ func (s *Service) ClientConfig(userID string) ClientConfigOutput {
 			"猫总监在线发话：铲屎官请立即执行。",
 			"今天的猫语翻译已出炉，笑到打鸣。",
 		},
+		EdgeDeviceWhitelist: append([]string{}, s.edgeWhitelist...),
+		RiskEnabled:         s.painRisk,
 	}
+	out.ABBucketRules.TotalBuckets = 3
+	active, err := s.repo.GetActiveModel(context.Background())
+	if err == nil && active != nil {
+		out.ModelRollout.ActiveModel = active.ModelVersion
+		out.ModelRollout.RolloutRatio = active.RolloutRatio
+		out.ModelRollout.TargetBucket = active.TargetBucket
+	} else {
+		out.ModelRollout.ActiveModel = s.modelVersion
+		out.ModelRollout.RolloutRatio = 1.0
+		out.ModelRollout.TargetBucket = 0
+	}
+	return out
+}
+
+type LoginInput struct {
+	Code string
+}
+
+type LoginOutput struct {
+	UserID       string `json:"userId"`
+	SessionToken string `json:"sessionToken"`
+	ExpiresAt    int64  `json:"expiresAt"`
+}
+
+func (s *Service) Login(ctx context.Context, in LoginInput) (*LoginOutput, error) {
+	if in.Code == "" {
+		return nil, fmt.Errorf("%w: code is required", domain.ErrBadRequest)
+	}
+	userID := fmt.Sprintf("user_%x", repository.ABBucket(in.Code, 1<<20))
+	now := time.Now()
+	expiresAt := now.Add(24 * time.Hour)
+	session := &domain.UserSession{
+		SessionToken: repository.GenerateID("sess"),
+		UserID:       userID,
+		WechatCode:   in.Code,
+		CreatedAt:    now,
+		ExpiresAt:    expiresAt,
+	}
+	if err := s.repo.CreateSession(ctx, session); err != nil {
+		return nil, err
+	}
+	return &LoginOutput{
+		UserID:       userID,
+		SessionToken: session.SessionToken,
+		ExpiresAt:    expiresAt.Unix(),
+	}, nil
+}
+
+func (s *Service) ValidateSession(ctx context.Context, userID string, token string) error {
+	if userID == "" || token == "" {
+		return fmt.Errorf("%w: missing user session", domain.ErrUnauthorized)
+	}
+	session, err := s.repo.GetSession(ctx, token)
+	if err != nil {
+		return fmt.Errorf("%w: invalid session", domain.ErrUnauthorized)
+	}
+	if session.UserID != userID {
+		return fmt.Errorf("%w: user mismatch", domain.ErrUnauthorized)
+	}
+	if time.Now().After(session.ExpiresAt) {
+		return fmt.Errorf("%w: session expired", domain.ErrUnauthorized)
+	}
+	return nil
+}
+
+func (s *Service) CleanupExpiredSamples(ctx context.Context) (int, error) {
+	return s.repo.DeleteExpiredSamples(ctx, time.Now().Unix())
+}
+
+func (s *Service) RolloutModel(ctx context.Context, modelVersion string, rolloutRatio float64, targetBucket int) error {
+	if modelVersion == "" {
+		return fmt.Errorf("%w: modelVersion is required", domain.ErrBadRequest)
+	}
+	if rolloutRatio < 0 || rolloutRatio > 1 {
+		return fmt.Errorf("%w: rolloutRatio must be between 0 and 1", domain.ErrBadRequest)
+	}
+	if targetBucket < 0 {
+		return fmt.Errorf("%w: targetBucket must be >= 0", domain.ErrBadRequest)
+	}
+	return s.repo.UpdateModelStatus(ctx, modelVersion, domain.ModelStatusGray, rolloutRatio, targetBucket)
+}
+
+func (s *Service) ActivateModel(ctx context.Context, modelVersion string) error {
+	if modelVersion == "" {
+		return fmt.Errorf("%w: modelVersion is required", domain.ErrBadRequest)
+	}
+	return s.repo.UpdateModelStatus(ctx, modelVersion, domain.ModelStatusActive, 1.0, 0)
+}
+
+func (s *Service) RegisterModelEvaluation(ctx context.Context, modelVersion string, metricsJSON string) error {
+	if modelVersion == "" || metricsJSON == "" {
+		return fmt.Errorf("%w: modelVersion and metrics are required", domain.ErrBadRequest)
+	}
+	return s.repo.UpsertModelRegistry(ctx, domain.ModelRegistry{
+		ModelVersion: modelVersion,
+		TaskScope:    "intent_state_risk",
+		MetricsJSON:  metricsJSON,
+		Status:       domain.ModelStatusCandidate,
+		RolloutRatio: 0,
+		TargetBucket: 0,
+		CreatedAt:    time.Now(),
+	})
 }
 
 func (s *Service) GenerateCopy(ctx context.Context, result domain.InferenceResult) (domain.CopyBlock, error) {

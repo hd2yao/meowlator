@@ -1,4 +1,4 @@
-const { finalizeInference, getUploadURL } = require("../../utils/api");
+const { finalizeInference, getAuthHeader, getUploadURL } = require("../../utils/api");
 const { edgeInferenceEngine } = require("../../utils/edge_inference");
 
 Page({
@@ -14,7 +14,7 @@ Page({
       const edgePayload = await this.runEdgeInference(imagePath);
 
       const app = getApp();
-      const uploadMeta = await getUploadURL(app.globalData.userId, app.globalData.catId);
+      const uploadMeta = await getUploadURL(app.globalData.catId);
       await this.uploadFile(uploadMeta.uploadUrl, imagePath);
 
       const response = await finalizeInference({
@@ -55,6 +55,7 @@ Page({
         url: uploadUrl,
         filePath,
         name: "file",
+        header: getAuthHeader(),
         success: () => resolve(),
         fail: reject,
       });

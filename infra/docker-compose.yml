@@ -48,6 +48,11 @@ services:
       EDGE_ACCEPT_THRESHOLD: "0.7"
       CLOUD_FALLBACK_THRESHOLD: "0.45"
       MODEL_VERSION: "mobilenetv3-small-int8-v1"
+      PAIN_RISK_ENABLED: "false"
+      EDGE_DEVICE_WHITELIST: "iPhone15,Android"
+      RATE_LIMIT_PER_USER_MIN: "120"
+      RATE_LIMIT_PER_IP_MIN: "300"
+      ADMIN_TOKEN: "dev-admin-token"
     ports:
       - "8080:8080"
     depends_on:

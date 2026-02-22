@@ -44,9 +44,12 @@ export interface FinalizeResponse {
 export interface EdgeRuntime {
   engine: string;
   modelVersion: string;
+  modelHash?: string;
+  inputShape?: string;
   loadMs: number;
   inferMs: number;
   deviceModel: string;
+  failureCode?: string;
   failureReason?: string;
 }
 

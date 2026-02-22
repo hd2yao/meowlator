@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"time"
@@ -47,11 +48,32 @@ func main() {
 		cfg.DefaultRetentionDays,
 		cfg.ModelVersion,
 		cfg.PainRiskEnabled,
+		cfg.EdgeDeviceWhitelist,
 	)
 
-	h := api.NewHandler(svc)
+	h := api.NewHandler(svc, api.HandlerOptions{
+		RateLimitPerUserMin: cfg.RateLimitPerUserMin,
+		RateLimitPerIPMin:   cfg.RateLimitPerIPMin,
+		AdminToken:          cfg.AdminToken,
+	})
 	mux := http.NewServeMux()
 	h.Register(mux)
+
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for {
+			<-ticker.C
+			deleted, err := svc.CleanupExpiredSamples(context.Background())
+			if err != nil {
+				log.Printf("cleanup expired samples failed: %v", err)
+				continue
+			}
+			if deleted > 0 {
+				log.Printf("cleanup expired samples completed: deleted=%d", deleted)
+			}
+		}
+	}()
 
 	log.Printf("api service listening on %s", cfg.Addr)
 	if err := http.ListenAndServe(cfg.Addr, mux); err != nil {

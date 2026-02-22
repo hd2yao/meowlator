@@ -252,6 +252,205 @@ func (r *MySQLRepository) UserFeedbackStats(ctx context.Context, userID string) 
 	return total, extremeRatio, suspicious
 }
 
+func (r *MySQLRepository) DeleteExpiredSamples(ctx context.Context, expireBefore int64) (int, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	if _, err = tx.ExecContext(ctx,
+		`DELETE f FROM feedback f INNER JOIN samples s ON f.sample_id = s.sample_id WHERE UNIX_TIMESTAMP(s.expire_at) <= ?`,
+		expireBefore,
+	); err != nil {
+		return 0, err
+	}
+	if _, err = tx.ExecContext(ctx, `DELETE FROM user_sessions WHERE UNIX_TIMESTAMP(expires_at) <= ?`, expireBefore); err != nil {
+		return 0, err
+	}
+	res, err := tx.ExecContext(ctx, `DELETE FROM samples WHERE UNIX_TIMESTAMP(expire_at) <= ?`, expireBefore)
+	if err != nil {
+		return 0, err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return int(affected), nil
+}
+
+func (r *MySQLRepository) CreateSession(ctx context.Context, session *domain.UserSession) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO users (user_id, wechat_openid) VALUES (?, NULL)
+		 ON DUPLICATE KEY UPDATE user_id = user_id`, session.UserID,
+	)
+	if err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO user_sessions (session_token, user_id, wechat_code, expires_at, created_at)
+		 VALUES (?, ?, ?, ?, ?)
+		 ON DUPLICATE KEY UPDATE user_id=VALUES(user_id), wechat_code=VALUES(wechat_code), expires_at=VALUES(expires_at)`,
+		session.SessionToken,
+		session.UserID,
+		session.WechatCode,
+		session.ExpiresAt,
+		session.CreatedAt,
+	)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (r *MySQLRepository) GetSession(ctx context.Context, token string) (*domain.UserSession, error) {
+	row := r.db.QueryRowContext(ctx,
+		`SELECT session_token, user_id, wechat_code, expires_at, created_at
+		 FROM user_sessions WHERE session_token = ?`, token,
+	)
+	var out domain.UserSession
+	if err := row.Scan(&out.SessionToken, &out.UserID, &out.WechatCode, &out.ExpiresAt, &out.CreatedAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, domain.ErrNotFound
+		}
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (r *MySQLRepository) UpsertModelRegistry(ctx context.Context, model domain.ModelRegistry) error {
+	if !model.Status.IsValid() {
+		model.Status = domain.ModelStatusCandidate
+	}
+	_, err := r.db.ExecContext(ctx,
+		`INSERT INTO model_registry (model_version, task_scope, metrics_json, status, rollout_ratio, target_bucket, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)
+		 ON DUPLICATE KEY UPDATE
+		   task_scope=VALUES(task_scope),
+		   metrics_json=VALUES(metrics_json),
+		   status=VALUES(status),
+		   rollout_ratio=VALUES(rollout_ratio),
+		   target_bucket=VALUES(target_bucket)`,
+		model.ModelVersion,
+		model.TaskScope,
+		model.MetricsJSON,
+		string(model.Status),
+		model.RolloutRatio,
+		model.TargetBucket,
+		model.CreatedAt,
+	)
+	return err
+}
+
+func (r *MySQLRepository) UpdateModelStatus(ctx context.Context, modelVersion string, status domain.ModelStatus, rolloutRatio float64, targetBucket int) error {
+	if !status.IsValid() {
+		return domain.ErrBadRequest
+	}
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+	if status == domain.ModelStatusActive {
+		if _, err = tx.ExecContext(ctx, `UPDATE model_registry SET status = ? WHERE status IN (?, ?) AND model_version <> ?`,
+			string(domain.ModelStatusRolledBack),
+			string(domain.ModelStatusActive),
+			string(domain.ModelStatusGray),
+			modelVersion,
+		); err != nil {
+			return err
+		}
+	}
+	res, err := tx.ExecContext(ctx,
+		`UPDATE model_registry SET status = ?, rollout_ratio = ?, target_bucket = ? WHERE model_version = ?`,
+		string(status),
+		rolloutRatio,
+		targetBucket,
+		modelVersion,
+	)
+	if err != nil {
+		return err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		_, err = tx.ExecContext(ctx,
+			`INSERT INTO model_registry (model_version, task_scope, metrics_json, status, rollout_ratio, target_bucket, created_at)
+			 VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+			modelVersion, "intent_state_risk", `{}`, string(status), rolloutRatio, targetBucket,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (r *MySQLRepository) GetActiveModel(ctx context.Context) (*domain.ModelRegistry, error) {
+	row := r.db.QueryRowContext(ctx,
+		`SELECT model_version, task_scope, metrics_json, status, rollout_ratio, target_bucket, created_at
+		 FROM model_registry
+		 WHERE status IN (?, ?)
+		 ORDER BY status = ? DESC, created_at DESC
+		 LIMIT 1`,
+		string(domain.ModelStatusActive),
+		string(domain.ModelStatusGray),
+		string(domain.ModelStatusActive),
+	)
+	var out domain.ModelRegistry
+	var status string
+	if err := row.Scan(&out.ModelVersion, &out.TaskScope, &out.MetricsJSON, &status, &out.RolloutRatio, &out.TargetBucket, &out.CreatedAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, domain.ErrNotFound
+		}
+		return nil, err
+	}
+	out.Status = domain.ModelStatus(status)
+	return &out, nil
+}
+
+func (r *MySQLRepository) SaveRiskEvent(ctx context.Context, sampleID string, risk *domain.RiskInfo) error {
+	if risk == nil {
+		return nil
+	}
+	raw, err := json.Marshal(risk)
+	if err != nil {
+		return err
+	}
+	_, err = r.db.ExecContext(ctx,
+		`INSERT INTO risk_events (event_id, sample_id, pain_risk_score, pain_risk_level, evidence_json, created_at)
+		 VALUES (?, ?, ?, ?, ?, NOW())`,
+		GenerateID("risk"),
+		sampleID,
+		risk.PainRiskScore,
+		string(risk.PainRiskLevel),
+		string(raw),
+	)
+	return err
+}
+
 func isDuplicate(err error) bool {
 	return stringsContains(err.Error(), "duplicate entry")
 }

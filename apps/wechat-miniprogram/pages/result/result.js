@@ -72,10 +72,8 @@ Page({
 
   async sendFeedback(isCorrect, trueLabel) {
     try {
-      const app = getApp();
       await submitFeedback({
         sampleId: this.data.sampleId,
-        userId: app.globalData.userId,
         isCorrect,
         trueLabel,
       });

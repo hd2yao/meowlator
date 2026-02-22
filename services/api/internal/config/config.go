@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -17,6 +18,10 @@ type Config struct {
 	CopyTimeout            time.Duration
 	ModelVersion           string
 	PainRiskEnabled        bool
+	EdgeDeviceWhitelist    []string
+	RateLimitPerUserMin    int
+	RateLimitPerIPMin      int
+	AdminToken             string
 }
 
 func Load() Config {
@@ -31,6 +36,10 @@ func Load() Config {
 		CopyTimeout:            time.Duration(getEnvInt("COPY_TIMEOUT_MS", 1200)) * time.Millisecond,
 		ModelVersion:           getEnv("MODEL_VERSION", "mobilenetv3-small-int8-v1"),
 		PainRiskEnabled:        getEnvBool("PAIN_RISK_ENABLED", false),
+		EdgeDeviceWhitelist:    getEnvList("EDGE_DEVICE_WHITELIST", []string{}),
+		RateLimitPerUserMin:    getEnvInt("RATE_LIMIT_PER_USER_MIN", 120),
+		RateLimitPerIPMin:      getEnvInt("RATE_LIMIT_PER_IP_MIN", 300),
+		AdminToken:             getEnv("ADMIN_TOKEN", "dev-admin-token"),
 	}
 }
 
@@ -75,4 +84,23 @@ func getEnvBool(key string, defaultValue bool) bool {
 		return defaultValue
 	}
 	return parsed
+}
+
+func getEnvList(key string, defaultValue []string) []string {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return append([]string{}, defaultValue...)
+	}
+	items := strings.Split(value, ",")
+	result := make([]string, 0, len(items))
+	for _, item := range items {
+		trimmed := strings.TrimSpace(item)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	if len(result) == 0 {
+		return append([]string{}, defaultValue...)
+	}
+	return result
 }

@@ -17,6 +17,9 @@ type MemoryRepository struct {
 	samples        map[string]*domain.Sample
 	feedback       map[string]*domain.Feedback
 	feedbackByUser map[string][]*domain.Feedback
+	sessions       map[string]*domain.UserSession
+	models         map[string]*domain.ModelRegistry
+	riskEvents     map[string][]*domain.RiskInfo
 }
 
 func NewMemoryRepository() *MemoryRepository {
@@ -24,6 +27,9 @@ func NewMemoryRepository() *MemoryRepository {
 		samples:        make(map[string]*domain.Sample),
 		feedback:       make(map[string]*domain.Feedback),
 		feedbackByUser: make(map[string][]*domain.Feedback),
+		sessions:       make(map[string]*domain.UserSession),
+		models:         make(map[string]*domain.ModelRegistry),
+		riskEvents:     make(map[string][]*domain.RiskInfo),
 	}
 }
 
@@ -139,6 +145,127 @@ func (r *MemoryRepository) UserFeedbackStats(ctx context.Context, userID string)
 	extremeRatio = float64(extreme) / float64(total)
 	suspicious = total >= 3 && conflicts == total
 	return total, extremeRatio, suspicious
+}
+
+func (r *MemoryRepository) DeleteExpiredSamples(ctx context.Context, expireBefore int64) (int, error) {
+	_ = ctx
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	now := time.Unix(expireBefore, 0)
+	for token, session := range r.sessions {
+		if !session.ExpiresAt.After(now) {
+			delete(r.sessions, token)
+		}
+	}
+	deleted := 0
+	for sampleID, sample := range r.samples {
+		if sample.ExpireAt <= expireBefore {
+			delete(r.samples, sampleID)
+			deleted++
+		}
+	}
+	if deleted == 0 {
+		return 0, nil
+	}
+	for id, fb := range r.feedback {
+		if _, ok := r.samples[fb.SampleID]; !ok {
+			delete(r.feedback, id)
+		}
+	}
+	for userID, list := range r.feedbackByUser {
+		filtered := list[:0]
+		for _, fb := range list {
+			if _, ok := r.samples[fb.SampleID]; ok {
+				filtered = append(filtered, fb)
+			}
+		}
+		r.feedbackByUser[userID] = filtered
+	}
+	return deleted, nil
+}
+
+func (r *MemoryRepository) CreateSession(ctx context.Context, session *domain.UserSession) error {
+	_ = ctx
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	copySession := *session
+	r.sessions[session.SessionToken] = &copySession
+	return nil
+}
+
+func (r *MemoryRepository) GetSession(ctx context.Context, token string) (*domain.UserSession, error) {
+	_ = ctx
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	session, ok := r.sessions[token]
+	if !ok {
+		return nil, domain.ErrNotFound
+	}
+	copySession := *session
+	return &copySession, nil
+}
+
+func (r *MemoryRepository) UpsertModelRegistry(ctx context.Context, model domain.ModelRegistry) error {
+	_ = ctx
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	copyModel := model
+	r.models[model.ModelVersion] = &copyModel
+	return nil
+}
+
+func (r *MemoryRepository) UpdateModelStatus(ctx context.Context, modelVersion string, status domain.ModelStatus, rolloutRatio float64, targetBucket int) error {
+	_ = ctx
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	model, ok := r.models[modelVersion]
+	if !ok {
+		model = &domain.ModelRegistry{
+			ModelVersion: modelVersion,
+			TaskScope:    "intent_state_risk",
+			CreatedAt:    time.Now(),
+		}
+		r.models[modelVersion] = model
+	}
+	if status == domain.ModelStatusActive {
+		for version, item := range r.models {
+			if version == modelVersion {
+				continue
+			}
+			if item.Status == domain.ModelStatusActive || item.Status == domain.ModelStatusGray {
+				item.Status = domain.ModelStatusRolledBack
+			}
+		}
+	}
+	model.Status = status
+	model.RolloutRatio = rolloutRatio
+	model.TargetBucket = targetBucket
+	return nil
+}
+
+func (r *MemoryRepository) GetActiveModel(ctx context.Context) (*domain.ModelRegistry, error) {
+	_ = ctx
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, model := range r.models {
+		if model.Status == domain.ModelStatusActive || model.Status == domain.ModelStatusGray {
+			copyModel := *model
+			return &copyModel, nil
+		}
+	}
+	return nil, domain.ErrNotFound
+}
+
+func (r *MemoryRepository) SaveRiskEvent(ctx context.Context, sampleID string, risk *domain.RiskInfo) error {
+	_ = ctx
+	if risk == nil {
+		return nil
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	copyRisk := *risk
+	r.riskEvents[sampleID] = append(r.riskEvents[sampleID], &copyRisk)
+	return nil
 }
 
 func GenerateID(prefix string) string {

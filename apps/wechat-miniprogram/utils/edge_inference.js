@@ -107,6 +107,7 @@ class EdgeInferenceEngine {
   constructor() {
     this.engineName = "wx-heuristic-v1";
     this.modelVersion = "mobilenetv3-small-int8-v2";
+    this.modelHash = "dev-hash-v1";
     this.loaded = false;
     this.loadMs = 0;
   }
@@ -146,12 +147,16 @@ class EdgeInferenceEngine {
   }
 
   buildRuntime(failureReason, inferMs) {
+    const failureCode = failureReason ? "EDGE_RUNTIME_ERROR" : undefined;
     return {
       engine: this.engineName,
       modelVersion: this.modelVersion,
+      modelHash: this.modelHash,
+      inputShape: "1x3x224x224",
       loadMs: this.loadMs,
       inferMs,
       deviceModel: getDeviceModel(),
+      failureCode,
       failureReason: failureReason || undefined,
     };
   }

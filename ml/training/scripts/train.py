@@ -98,7 +98,7 @@ def train_one_epoch(model, loader, criterion, optimizer, device, num_classes: in
     )
 
 
-def evaluate(model, loader, criterion, device, num_classes: int) -> Tuple[EpochMetrics, List[List[int]]]:
+def evaluate(model, loader, criterion, device, num_classes: int) -> Tuple[EpochMetrics, List[List[int]], Dict]:
     import torch
 
     model.eval()
@@ -107,6 +107,7 @@ def evaluate(model, loader, criterion, device, num_classes: int) -> Tuple[EpochM
     correct_top3 = 0
     total = 0
     confusion = [[0 for _ in range(num_classes)] for _ in range(num_classes)]
+    confidence_pairs: List[Tuple[float, int]] = []
 
     with torch.no_grad():
         for images, labels in loader:
@@ -123,8 +124,12 @@ def evaluate(model, loader, criterion, device, num_classes: int) -> Tuple[EpochM
             correct_top1 += (top1 == labels).sum().item()
             label_values = labels.detach().cpu().tolist()
             pred_values = top1.detach().cpu().tolist()
+            probs = torch.softmax(logits, dim=1)
+            conf_values = probs.max(dim=1).values.detach().cpu().tolist()
             for truth, pred in zip(label_values, pred_values):
                 confusion[int(truth)][int(pred)] += 1
+            for conf, truth, pred in zip(conf_values, label_values, pred_values):
+                confidence_pairs.append((float(conf), 1 if int(truth) == int(pred) else 0))
 
             k = min(3, num_classes)
             topk = logits.topk(k=k, dim=1).indices
@@ -135,7 +140,59 @@ def evaluate(model, loader, criterion, device, num_classes: int) -> Tuple[EpochM
         top1=correct_top1 / max(total, 1),
         top3=correct_top3 / max(total, 1),
     )
-    return metrics, confusion
+    return metrics, confusion, build_calibration(confidence_pairs)
+
+
+def build_calibration(pairs: List[Tuple[float, int]], bins: int = 10) -> Dict:
+    if bins <= 0:
+        bins = 10
+    if not pairs:
+        return {"ece": 0.0, "bins": []}
+
+    buckets = [
+        {
+            "idx": idx,
+            "start": idx / bins,
+            "end": (idx + 1) / bins,
+            "count": 0,
+            "correct": 0,
+            "conf_sum": 0.0,
+        }
+        for idx in range(bins)
+    ]
+    for conf, correct in pairs:
+        pos = int(conf * bins)
+        if pos >= bins:
+            pos = bins - 1
+        bucket = buckets[pos]
+        bucket["count"] += 1
+        bucket["correct"] += correct
+        bucket["conf_sum"] += conf
+
+    total = float(len(pairs))
+    ece = 0.0
+    output_bins = []
+    for bucket in buckets:
+        count = int(bucket["count"])
+        if count == 0:
+            continue
+        avg_conf = bucket["conf_sum"] / float(count)
+        accuracy = float(bucket["correct"]) / float(count)
+        gap = abs(avg_conf - accuracy)
+        ece += (float(count) / total) * gap
+        output_bins.append(
+            {
+                "idx": bucket["idx"],
+                "start": round(bucket["start"], 4),
+                "end": round(bucket["end"], 4),
+                "count": count,
+                "avg_conf": round(avg_conf, 6),
+                "accuracy": round(accuracy, 6),
+                "gap": round(gap, 6),
+            }
+        )
+
+    return {"ece": round(ece, 6), "bins": output_bins}
 
 
 def build_datasets(dataset_root: pathlib.Path, input_size: int, download: bool):
@@ -342,11 +399,12 @@ def main() -> None:
         best_eval_top1 = max(best_eval_top1, float(row.get("eval_top1", 0.0)))
 
     latest_confusion = [[0 for _ in INTENT_LABELS] for _ in INTENT_LABELS]
+    latest_calibration = {"ece": 0.0, "bins": []}
     start_epoch = len(history) + 1
     end_epoch = start_epoch + args.epochs
     for epoch in range(start_epoch, end_epoch):
         train_metrics = train_one_epoch(model, train_loader, criterion, optimizer, device, len(INTENT_LABELS))
-        eval_metrics, latest_confusion = evaluate(model, test_loader, criterion, device, len(INTENT_LABELS))
+        eval_metrics, latest_confusion, latest_calibration = evaluate(model, test_loader, criterion, device, len(INTENT_LABELS))
 
         history.append(
             {
@@ -370,6 +428,7 @@ def main() -> None:
     metrics_path = args.output_dir / "metrics.json"
     priors_path = args.output_dir / "intent_priors.json"
     confusion_path = args.output_dir / "confusion_matrix.json"
+    calibration_path = args.output_dir / "calibration.json"
 
     torch.save(
         {
@@ -400,6 +459,7 @@ def main() -> None:
         "resumed_from": resumed_from,
         "seed": args.seed,
         "intent_priors": priors,
+        "ece": latest_calibration.get("ece", 0.0),
         "history": history,
     }
 
@@ -430,12 +490,25 @@ def main() -> None:
             indent=2,
         )
 
+    with calibration_path.open("w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "model_version": args.model_version,
+                "ece": latest_calibration.get("ece", 0.0),
+                "bins": latest_calibration.get("bins", []),
+            },
+            f,
+            ensure_ascii=True,
+            indent=2,
+        )
+
     print(
         json.dumps(
             {
                 "checkpoint": str(checkpoint_path),
                 "metrics": str(metrics_path),
                 "confusion_matrix": str(confusion_path),
+                "calibration": str(calibration_path),
             },
             ensure_ascii=True,
         )

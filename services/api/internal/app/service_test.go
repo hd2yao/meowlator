@@ -40,7 +40,7 @@ func TestFinalizeInferenceCloudFallback(t *testing.T) {
 		State:      domain.State3D{Tension: domain.LevelMid, Arousal: domain.LevelHigh, Comfort: domain.LevelLow},
 		Confidence: 0.8,
 		Source:     "CLOUD",
-	}}, fakeCopy{}, Thresholds{EdgeAccept: 0.7, CloudFallback: 0.45}, 7, "model-v1", false)
+	}}, fakeCopy{}, Thresholds{EdgeAccept: 0.7, CloudFallback: 0.45}, 7, "model-v1", false, nil)
 
 	upload, err := svc.CreateUploadSample(context.Background(), CreateUploadSampleInput{UserID: "u1", CatID: "c1"})
 	if err != nil {
@@ -69,7 +69,7 @@ func TestFinalizeInferenceEdgeRuntimeMeta(t *testing.T) {
 		State:      domain.State3D{Tension: domain.LevelMid, Arousal: domain.LevelHigh, Comfort: domain.LevelLow},
 		Confidence: 0.8,
 		Source:     "CLOUD",
-	}}, fakeCopy{}, Thresholds{EdgeAccept: 0.7, CloudFallback: 0.45}, 7, "model-v1", false)
+	}}, fakeCopy{}, Thresholds{EdgeAccept: 0.7, CloudFallback: 0.45}, 7, "model-v1", false, nil)
 
 	upload, err := svc.CreateUploadSample(context.Background(), CreateUploadSampleInput{UserID: "u1", CatID: "c1"})
 	if err != nil {
@@ -113,7 +113,7 @@ func TestFinalizeInferenceEdgeRuntimeMeta(t *testing.T) {
 
 func TestFinalizeInferenceRejectInvalidEdgeRuntime(t *testing.T) {
 	repo := repository.NewMemoryRepository()
-	svc := NewService(repo, fakeInference{}, fakeCopy{}, Thresholds{EdgeAccept: 0.7, CloudFallback: 0.45}, 7, "model-v1", false)
+	svc := NewService(repo, fakeInference{}, fakeCopy{}, Thresholds{EdgeAccept: 0.7, CloudFallback: 0.45}, 7, "model-v1", false, nil)
 	upload, err := svc.CreateUploadSample(context.Background(), CreateUploadSampleInput{UserID: "u1", CatID: "c1"})
 	if err != nil {
 		t.Fatalf("create sample failed: %v", err)
@@ -136,7 +136,7 @@ func TestFinalizeInferenceRejectInvalidEdgeRuntime(t *testing.T) {
 
 func TestFinalizeInferenceWithPainRisk(t *testing.T) {
 	repo := repository.NewMemoryRepository()
-	svc := NewService(repo, fakeInference{}, fakeCopy{}, Thresholds{EdgeAccept: 0.7, CloudFallback: 0.45}, 7, "model-v1", true)
+	svc := NewService(repo, fakeInference{}, fakeCopy{}, Thresholds{EdgeAccept: 0.7, CloudFallback: 0.45}, 7, "model-v1", true, nil)
 	upload, err := svc.CreateUploadSample(context.Background(), CreateUploadSampleInput{UserID: "u1", CatID: "c1"})
 	if err != nil {
 		t.Fatalf("create sample failed: %v", err)
@@ -169,7 +169,7 @@ func TestFinalizeInferenceWithPainRisk(t *testing.T) {
 
 func TestSaveFeedback(t *testing.T) {
 	repo := repository.NewMemoryRepository()
-	svc := NewService(repo, fakeInference{}, fakeCopy{}, Thresholds{EdgeAccept: 0.7, CloudFallback: 0.45}, 7, "model-v1", false)
+	svc := NewService(repo, fakeInference{}, fakeCopy{}, Thresholds{EdgeAccept: 0.7, CloudFallback: 0.45}, 7, "model-v1", false, nil)
 
 	upload, err := svc.CreateUploadSample(context.Background(), CreateUploadSampleInput{UserID: "u1", CatID: "c1"})
 	if err != nil {

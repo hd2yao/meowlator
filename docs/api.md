@@ -1,16 +1,43 @@
 # Meowlator API v1
 
+## POST /v1/auth/wechat/login
+
+Request:
+
+```json
+{
+  "code": "wx-login-code"
+}
+```
+
+Response:
+
+```json
+{
+  "userId": "user_123abc",
+  "sessionToken": "sess_xxx",
+  "expiresAt": 1760000000
+}
+```
+
+Protected APIs require headers:
+- `Authorization: Bearer <sessionToken>`
+- `X-User-Id: <userId>`
+
 ## POST /v1/samples/upload-url
 
 Request:
 
 ```json
 {
-  "userId": "demo-user-001",
   "catId": "cat-default",
   "suffix": ".jpg"
 }
 ```
+
+This endpoint requires request signature headers:
+- `X-Req-Ts`
+- `X-Req-Sig`
 
 For local MVP debugging, upload the image to the returned URL using multipart field `file`.
 The API service accepts it at `POST /v1/samples/upload/{sampleId}` and stores a temp copy under `/tmp/meowlator/uploads`.
@@ -47,9 +74,12 @@ Request:
   "edgeRuntime": {
     "engine": "wx-heuristic-v1",
     "modelVersion": "mobilenetv3-small-int8-v2",
+    "modelHash": "dev-hash-v1",
+    "inputShape": "1x3x224x224",
     "loadMs": 14,
     "inferMs": 37,
     "deviceModel": "iPhone15,2",
+    "failureCode": "EDGE_RUNTIME_ERROR",
     "failureReason": ""
   }
 }
@@ -66,9 +96,12 @@ When `edgeRuntime` is provided, `result.edgeMeta` will be returned:
     "edgeMeta": {
       "engine": "wx-heuristic-v1",
       "modelVersion": "mobilenetv3-small-int8-v2",
+      "modelHash": "dev-hash-v1",
+      "inputShape": "1x3x224x224",
       "loadMs": 14,
       "inferMs": 37,
       "deviceModel": "iPhone15,2",
+      "failureCode": "EDGE_RUNTIME_ERROR",
       "fallbackUsed": false,
       "usedEdgeResult": true
     }
@@ -95,7 +128,7 @@ When `PAIN_RISK_ENABLED=true`, response may include `result.risk`:
 
 ## POST /v1/feedback
 
-- `isCorrect=true` means confirmed label with weight 0.6
+- `isCorrect=true` means confirmed label with weight 0.6.
 - `isCorrect=false` requires `trueLabel` with weight 1.0
 
 ## POST /v1/copy/generate
@@ -105,7 +138,20 @@ Input only accepts structured inference JSON. Raw images are not supported.
 ## DELETE /v1/samples/{sampleId}
 
 Deletes sample and related feedback records.
+This endpoint requires request signature headers (`X-Req-Ts`, `X-Req-Sig`).
 
 ## GET /v1/metrics/client-config
 
-Returns thresholds, model version, and AB config.
+Returns thresholds, model version, AB config, whitelist and rollout metadata.
+
+## POST /v1/admin/models/register
+
+Registers candidate model metrics (internal endpoint, requires `X-Admin-Token`).
+
+## POST /v1/admin/models/rollout
+
+Sets model to GRAY rollout (internal endpoint, requires `X-Admin-Token`).
+
+## POST /v1/admin/models/activate
+
+Activates target model and rolls back previous active/gray model (internal endpoint, requires `X-Admin-Token`).

@@ -1,6 +1,15 @@
+const { ensureSession } = require("./utils/api");
+
 App({
   globalData: {
-    userId: "demo-user-001",
+    userId: "guest",
     catId: "cat-default",
+  },
+  async onLaunch() {
+    try {
+      await ensureSession();
+    } catch (err) {
+      // ignore on boot; requests retry auth when needed
+    }
   },
 });

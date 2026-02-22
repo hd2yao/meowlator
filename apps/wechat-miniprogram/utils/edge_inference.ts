@@ -113,6 +113,7 @@ export interface EdgePrediction {
 export class EdgeInferenceEngine {
   private readonly engineName = "wx-heuristic-v1";
   private readonly modelVersion = "mobilenetv3-small-int8-v2";
+  private readonly modelHash = "dev-hash-v1";
   private loaded = false;
   private loadMs = 0;
 
@@ -151,12 +152,16 @@ export class EdgeInferenceEngine {
   }
 
   buildRuntime(failureReason: string, inferMs: number): EdgeRuntime {
+    const failureCode = failureReason ? "EDGE_RUNTIME_ERROR" : undefined;
     return {
       engine: this.engineName,
       modelVersion: this.modelVersion,
+      modelHash: this.modelHash,
+      inputShape: "1x3x224x224",
       loadMs: this.loadMs,
       inferMs,
       deviceModel: getDeviceModel(),
+      failureCode,
       failureReason: failureReason || undefined,
     };
   }

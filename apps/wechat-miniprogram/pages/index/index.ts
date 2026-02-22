@@ -1,4 +1,4 @@
-import { finalizeInference, getUploadURL } from "../../utils/api";
+import { finalizeInference, getAuthHeader, getUploadURL } from "../../utils/api";
 import { edgeInferenceEngine } from "../../utils/edge_inference";
 import type { EdgeRuntime, InferenceResult } from "../../types/shared";
 
@@ -20,8 +20,8 @@ Page({
       const imagePath = await this.pickImage();
       const edgePayload = await this.runEdgeInference(imagePath);
 
-      const app = getApp<{ globalData: { userId: string; catId: string; lastResult?: unknown } }>();
-      const uploadMeta = await getUploadURL(app.globalData.userId, app.globalData.catId);
+      const app = getApp<{ globalData: { catId: string; lastResult?: unknown } }>();
+      const uploadMeta = await getUploadURL(app.globalData.catId);
       await this.uploadFile(uploadMeta.uploadUrl, imagePath);
 
       const response = await finalizeInference({
@@ -62,6 +62,7 @@ Page({
         url: uploadUrl,
         filePath,
         name: "file",
+        header: getAuthHeader(),
         success: () => resolve(),
         fail: reject,
       });

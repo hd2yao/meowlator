@@ -3,7 +3,7 @@
 Monorepo for a WeChat Mini Program that performs edge-first cat intent inference with cloud fallback,
 and continuously improves with user feedback.
 
-Current project version: `0.5.0` (see `/Users/dysania/program/meowlator/VERSION`).
+Current project version: `1.0.0` (see `/Users/dysania/program/meowlator/VERSION`).
 
 ## Structure
 
@@ -57,6 +57,14 @@ make build-training-manifest
 make active-learning-daily
 ```
 
+Build deterministic evaluation split and threshold report:
+
+```bash
+make build-eval-splits
+make threshold-report
+make evaluate-intent
+```
+
 Resume training from an existing checkpoint:
 
 ```bash
@@ -79,33 +87,55 @@ export MODEL_PRIORS_PATH=/Users/dysania/program/meowlator/ml/training/artifacts/
 
 ```bash
 python3 /Users/dysania/program/meowlator/tools/record_node.py \
-  --node-id N005 \
-  --version 0.4.0 \
-  --area training-pipeline \
+  --node-id N007 \
+  --version 1.0.0 \
+  --area release-readiness \
   --functional-node \"describe feature\" \
   --verification \"make test\" \
   --commit <commit_hash>
 ```
 
-6. Mini Program edge inference reports runtime metadata. `POST /v1/inference/finalize` can include:
+6. Model release gate check:
+
+```bash
+make gate-model
+```
+
+7. Mini Program edge inference reports runtime metadata. `POST /v1/inference/finalize` can include:
 
 ```json
 {
   "edgeRuntime": {
     "engine": "wx-heuristic-v1",
     "modelVersion": "mobilenetv3-small-int8-v2",
+    "modelHash": "dev-hash-v1",
+    "inputShape": "1x3x224x224",
     "loadMs": 12,
     "inferMs": 38,
-    "deviceModel": "iPhone15,2"
+    "deviceModel": "iPhone15,2",
+    "failureCode": "EDGE_RUNTIME_ERROR"
   }
 }
 ```
 
-7. Optional: enable pain-risk reminder branch in API (non-diagnostic):
+8. Optional: enable pain-risk reminder branch in API (non-diagnostic):
 
 ```bash
 export PAIN_RISK_ENABLED=true
 ```
+
+9. New security/release env vars:
+
+```bash
+export EDGE_DEVICE_WHITELIST=iPhone15,Android
+export RATE_LIMIT_PER_USER_MIN=120
+export RATE_LIMIT_PER_IP_MIN=300
+export ADMIN_TOKEN=dev-admin-token
+```
+
+10. Release operation docs:
+- `/Users/dysania/program/meowlator/docs/release_sop.md`
+- `/Users/dysania/program/meowlator/docs/launch_metrics.md`
 
 ## Compliance defaults
 

@@ -73,10 +73,8 @@ Page({
 
   async sendFeedback(isCorrect: boolean, trueLabel?: IntentLabel) {
     try {
-      const app = getApp<{ globalData: { userId: string } }>();
       await submitFeedback({
         sampleId: this.data.sampleId,
-        userId: app.globalData.userId,
         isCorrect,
         trueLabel,
       });

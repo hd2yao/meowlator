@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.0.0] - 2026-02-23
+
+### Added
+- Session auth flow: `POST /v1/auth/wechat/login` + API bearer session validation.
+- Request protection: per-user/per-IP rate limiting and signed request verification for sample upload-url / delete APIs.
+- Admin model release APIs: `POST /v1/admin/models/register`, `POST /v1/admin/models/rollout`, `POST /v1/admin/models/activate`.
+- Client config extensions: `edgeDeviceWhitelist`, `modelRollout`, `riskEnabled`, `abBucketRules`.
+- Data migrations for release readiness: `user_sessions`, `active_learning_tasks`, `model_evaluations`, `risk_events`, model rollout bucket column and sample indexes.
+- Daily expired-sample cleanup loop in API service.
+- Training v0.6 baseline additions: deterministic split builder, threshold report, release gate script, and calibration artifact output (`calibration.json`).
+
+### Changed
+- `edgeRuntime` / `edgeMeta` schema extended with `modelHash`, `inputShape`, `failureCode`.
+- Mini Program request layer now auto-login/authenticate, sends signed requests where required, and attaches auth headers for uploads.
+- Mini Program package version bumped to `1.0.0`.
+
 ## [0.5.0] - 2026-02-22
 
 ### Added
