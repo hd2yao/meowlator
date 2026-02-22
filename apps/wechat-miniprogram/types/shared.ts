@@ -23,6 +23,7 @@ export interface InferenceResult {
   source: "EDGE" | "CLOUD";
   evidence: string[];
   copyStyleVersion: string;
+  edgeMeta?: EdgeMeta;
 }
 
 export interface CopyBlock {
@@ -37,4 +38,18 @@ export interface FinalizeResponse {
   copy: CopyBlock;
   needFeedback: boolean;
   fallbackUsed: boolean;
+}
+
+export interface EdgeRuntime {
+  engine: string;
+  modelVersion: string;
+  loadMs: number;
+  inferMs: number;
+  deviceModel: string;
+  failureReason?: string;
+}
+
+export interface EdgeMeta extends EdgeRuntime {
+  fallbackUsed: boolean;
+  usedEdgeResult: boolean;
 }

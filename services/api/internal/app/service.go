@@ -110,6 +110,7 @@ type FinalizeInput struct {
 	DeviceCapable bool
 	SceneTag      string
 	EdgeResult    *domain.InferenceResult
+	EdgeRuntime   *domain.EdgeRuntime
 }
 
 type FinalizeOutput struct {
@@ -124,6 +125,9 @@ func (s *Service) FinalizeInference(ctx context.Context, in FinalizeInput) (*Fin
 	sample, err := s.repo.GetSample(ctx, in.SampleID)
 	if err != nil {
 		return nil, err
+	}
+	if err := in.EdgeRuntime.Validate(); err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrBadRequest, err)
 	}
 
 	var finalResult domain.InferenceResult
@@ -172,6 +176,18 @@ func (s *Service) FinalizeInference(ctx context.Context, in FinalizeInput) (*Fin
 
 	if finalResult.Confidence < s.thresholds.CloudFallback {
 		forceFeedback = true
+	}
+	if in.EdgeRuntime != nil {
+		finalResult.EdgeMeta = &domain.EdgeMeta{
+			Engine:         in.EdgeRuntime.Engine,
+			ModelVersion:   in.EdgeRuntime.ModelVersion,
+			LoadMS:         in.EdgeRuntime.LoadMS,
+			InferMS:        in.EdgeRuntime.InferMS,
+			DeviceModel:    in.EdgeRuntime.DeviceModel,
+			FailureReason:  in.EdgeRuntime.FailureReason,
+			FallbackUsed:   fallbackUsed,
+			UsedEdgeResult: finalResult.Source == "EDGE",
+		}
 	}
 
 	finalResult.CopyStyleVersion = "v1"

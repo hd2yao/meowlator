@@ -102,6 +102,7 @@ type finalizeReq struct {
 	DeviceCapable bool                    `json:"deviceCapable"`
 	SceneTag      string                  `json:"sceneTag"`
 	EdgeResult    *domain.InferenceResult `json:"edgeResult"`
+	EdgeRuntime   *domain.EdgeRuntime     `json:"edgeRuntime"`
 }
 
 func (h *Handler) finalizeInference(w http.ResponseWriter, r *http.Request) {
@@ -115,6 +116,7 @@ func (h *Handler) finalizeInference(w http.ResponseWriter, r *http.Request) {
 		DeviceCapable: req.DeviceCapable,
 		SceneTag:      req.SceneTag,
 		EdgeResult:    req.EdgeResult,
+		EdgeRuntime:   req.EdgeRuntime,
 	})
 	if err != nil {
 		writeDomainError(w, err)

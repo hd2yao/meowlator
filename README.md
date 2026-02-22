@@ -3,7 +3,7 @@
 Monorepo for a WeChat Mini Program that performs edge-first cat intent inference with cloud fallback,
 and continuously improves with user feedback.
 
-Current project version: `0.2.0` (see `/Users/dysania/program/meowlator/VERSION`).
+Current project version: `0.3.0` (see `/Users/dysania/program/meowlator/VERSION`).
 
 ## Structure
 
@@ -66,11 +66,25 @@ export MODEL_PRIORS_PATH=/Users/dysania/program/meowlator/ml/training/artifacts/
 ```bash
 python3 /Users/dysania/program/meowlator/tools/record_node.py \
   --node-id N004 \
-  --version 0.2.0 \
+  --version 0.3.0 \
   --area inference \
   --functional-node \"describe feature\" \
   --verification \"make test\" \
   --commit <commit_hash>
+```
+
+5. Mini Program edge inference now reports runtime metadata. `POST /v1/inference/finalize` can include:
+
+```json
+{
+  "edgeRuntime": {
+    "engine": "wx-heuristic-v1",
+    "modelVersion": "mobilenetv3-small-int8-v2",
+    "loadMs": 12,
+    "inferMs": 38,
+    "deviceModel": "iPhone15,2"
+  }
+}
 ```
 
 ## Compliance defaults

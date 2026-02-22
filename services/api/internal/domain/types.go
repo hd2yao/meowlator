@@ -87,6 +87,7 @@ type InferenceResult struct {
 	Source           string       `json:"source"`
 	Evidence         []string     `json:"evidence"`
 	CopyStyleVersion string       `json:"copyStyleVersion"`
+	EdgeMeta         *EdgeMeta    `json:"edgeMeta,omitempty"`
 }
 
 func (r *InferenceResult) Validate() error {

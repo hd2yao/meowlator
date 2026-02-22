@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0] - 2026-02-22
+
+### Added
+- API `POST /v1/inference/finalize` now accepts `edgeRuntime` payload (`engine`, `modelVersion`, `loadMs`, `inferMs`, `deviceModel`, `failureReason`).
+- Final inference result includes `result.edgeMeta` for runtime observability (`fallbackUsed`, `usedEdgeResult`).
+- Mini Program added `EdgeInferenceEngine` abstraction (`loadModel`, `predict`, `getHealth`) and runtime reporting.
+
+### Changed
+- Mini Program index flow no longer calls fixed `mockEdgeResult`; it now uses edge inference output and falls back to cloud automatically when edge inference fails.
+- Mini Program shared types expanded for `EdgeRuntime` / `EdgeMeta`.
+
 ## [0.2.0] - 2026-02-21
 
 ### Added

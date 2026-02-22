@@ -62,6 +62,78 @@ func TestFinalizeInferenceCloudFallback(t *testing.T) {
 	}
 }
 
+func TestFinalizeInferenceEdgeRuntimeMeta(t *testing.T) {
+	repo := repository.NewMemoryRepository()
+	svc := NewService(repo, fakeInference{result: domain.InferenceResult{
+		IntentTop3: []domain.IntentProb{{Label: domain.IntentWantPlay, Prob: 0.8}},
+		State:      domain.State3D{Tension: domain.LevelMid, Arousal: domain.LevelHigh, Comfort: domain.LevelLow},
+		Confidence: 0.8,
+		Source:     "CLOUD",
+	}}, fakeCopy{}, Thresholds{EdgeAccept: 0.7, CloudFallback: 0.45}, 7, "model-v1")
+
+	upload, err := svc.CreateUploadSample(context.Background(), CreateUploadSampleInput{UserID: "u1", CatID: "c1"})
+	if err != nil {
+		t.Fatalf("create sample failed: %v", err)
+	}
+
+	edge := &domain.InferenceResult{
+		IntentTop3: []domain.IntentProb{{Label: domain.IntentFeeding, Prob: 0.82}},
+		State:      domain.State3D{Tension: domain.LevelMid, Arousal: domain.LevelMid, Comfort: domain.LevelLow},
+		Confidence: 0.82,
+		Source:     "EDGE",
+	}
+	out, err := svc.FinalizeInference(context.Background(), FinalizeInput{
+		SampleID:      upload.SampleID,
+		DeviceCapable: true,
+		EdgeResult:    edge,
+		EdgeRuntime: &domain.EdgeRuntime{
+			Engine:       "edge-onnx-v1",
+			ModelVersion: "mobilenetv3-small-int8-v2",
+			LoadMS:       55,
+			InferMS:      38,
+			DeviceModel:  "iPhone15,2",
+		},
+	})
+	if err != nil {
+		t.Fatalf("finalize failed: %v", err)
+	}
+	if out.Result.Source != "EDGE" {
+		t.Fatalf("expected edge result, got %s", out.Result.Source)
+	}
+	if out.Result.EdgeMeta == nil {
+		t.Fatalf("expected edgeMeta to be set")
+	}
+	if out.Result.EdgeMeta.FallbackUsed {
+		t.Fatalf("expected no fallback for high confidence edge result")
+	}
+	if !out.Result.EdgeMeta.UsedEdgeResult {
+		t.Fatalf("expected UsedEdgeResult to be true")
+	}
+}
+
+func TestFinalizeInferenceRejectInvalidEdgeRuntime(t *testing.T) {
+	repo := repository.NewMemoryRepository()
+	svc := NewService(repo, fakeInference{}, fakeCopy{}, Thresholds{EdgeAccept: 0.7, CloudFallback: 0.45}, 7, "model-v1")
+	upload, err := svc.CreateUploadSample(context.Background(), CreateUploadSampleInput{UserID: "u1", CatID: "c1"})
+	if err != nil {
+		t.Fatalf("create sample failed: %v", err)
+	}
+	_, err = svc.FinalizeInference(context.Background(), FinalizeInput{
+		SampleID:      upload.SampleID,
+		DeviceCapable: true,
+		EdgeRuntime: &domain.EdgeRuntime{
+			Engine:       "",
+			ModelVersion: "m",
+			LoadMS:       -1,
+			InferMS:      10,
+			DeviceModel:  "dev",
+		},
+	})
+	if err == nil {
+		t.Fatalf("expected invalid edgeRuntime error")
+	}
+}
+
 func TestSaveFeedback(t *testing.T) {
 	repo := repository.NewMemoryRepository()
 	svc := NewService(repo, fakeInference{}, fakeCopy{}, Thresholds{EdgeAccept: 0.7, CloudFallback: 0.45}, 7, "model-v1")

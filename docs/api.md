@@ -43,11 +43,40 @@ Request:
     "source": "EDGE",
     "evidence": ["靠近食盆区域"],
     "copyStyleVersion": "v1"
+  },
+  "edgeRuntime": {
+    "engine": "wx-heuristic-v1",
+    "modelVersion": "mobilenetv3-small-int8-v2",
+    "loadMs": 14,
+    "inferMs": 37,
+    "deviceModel": "iPhone15,2",
+    "failureReason": ""
   }
 }
 ```
 
 Response includes final result, copy block, and feedback flag.
+When `edgeRuntime` is provided, `result.edgeMeta` will be returned:
+
+```json
+{
+  "sampleId": "sample_xxx",
+  "result": {
+    "source": "EDGE",
+    "edgeMeta": {
+      "engine": "wx-heuristic-v1",
+      "modelVersion": "mobilenetv3-small-int8-v2",
+      "loadMs": 14,
+      "inferMs": 37,
+      "deviceModel": "iPhone15,2",
+      "fallbackUsed": false,
+      "usedEdgeResult": true
+    }
+  },
+  "fallbackUsed": false,
+  "needFeedback": false
+}
+```
 
 ## POST /v1/feedback
 

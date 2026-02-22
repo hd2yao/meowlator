@@ -1,4 +1,4 @@
-import type { FinalizeResponse, InferenceResult, IntentLabel } from "../types/shared";
+import type { EdgeRuntime, FinalizeResponse, InferenceResult, IntentLabel } from "../types/shared";
 
 const BASE_URL = "http://127.0.0.1:8080";
 
@@ -56,6 +56,7 @@ export function finalizeInference(payload: {
   deviceCapable: boolean;
   sceneTag: string;
   edgeResult?: InferenceResult;
+  edgeRuntime?: EdgeRuntime;
 }): Promise<FinalizeResponse> {
   return request<FinalizeResponse>({
     url: `${BASE_URL}/v1/inference/finalize`,

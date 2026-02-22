@@ -1,19 +1,11 @@
 import { finalizeInference, getUploadURL } from "../../utils/api";
-import type { InferenceResult } from "../../types/shared";
+import { edgeInferenceEngine } from "../../utils/edge_inference";
+import type { EdgeRuntime, InferenceResult } from "../../types/shared";
 
-function mockEdgeResult(): InferenceResult {
-  return {
-    intentTop3: [
-      { label: "FEEDING", prob: 0.62 },
-      { label: "SEEK_ATTENTION", prob: 0.21 },
-      { label: "WANT_PLAY", prob: 0.09 },
-    ],
-    state: { tension: "MID", arousal: "MID", comfort: "LOW" },
-    confidence: 0.62,
-    source: "EDGE",
-    evidence: ["靠近食盆区域", "尾巴摆动频率较高"],
-    copyStyleVersion: "v1",
-  };
+interface EdgeFinalizePayload {
+  deviceCapable: boolean;
+  edgeResult?: InferenceResult;
+  edgeRuntime: EdgeRuntime;
 }
 
 Page({
@@ -25,15 +17,19 @@ Page({
   async onSelectImage() {
     this.setData({ loading: true, message: "" });
     try {
+      const imagePath = await this.pickImage();
+      const edgePayload = await this.runEdgeInference(imagePath);
+
       const app = getApp<{ globalData: { userId: string; catId: string; lastResult?: unknown } }>();
       const uploadMeta = await getUploadURL(app.globalData.userId, app.globalData.catId);
-      await this.pickAndUpload(uploadMeta.uploadUrl);
+      await this.uploadFile(uploadMeta.uploadUrl, imagePath);
 
       const response = await finalizeInference({
         sampleId: uploadMeta.sampleId,
-        deviceCapable: true,
+        deviceCapable: edgePayload.deviceCapable,
         sceneTag: "UNKNOWN",
-        edgeResult: mockEdgeResult(),
+        edgeResult: edgePayload.edgeResult,
+        edgeRuntime: edgePayload.edgeRuntime,
       });
 
       app.globalData.lastResult = response;
@@ -46,23 +42,59 @@ Page({
     }
   },
 
-  pickAndUpload(uploadUrl: string): Promise<void> {
+  pickImage(): Promise<string> {
     return new Promise((resolve, reject) => {
       wx.chooseMedia({
         count: 1,
         mediaType: ["image"],
         success: (mediaRes) => {
           const file = mediaRes.tempFiles[0];
-          wx.uploadFile({
-            url: uploadUrl,
-            filePath: file.tempFilePath,
-            name: "file",
-            success: () => resolve(),
-            fail: reject,
-          });
+          resolve(file.tempFilePath);
         },
         fail: reject,
       });
     });
+  },
+
+  uploadFile(uploadUrl: string, filePath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      wx.uploadFile({
+        url: uploadUrl,
+        filePath,
+        name: "file",
+        success: () => resolve(),
+        fail: reject,
+      });
+    });
+  },
+
+  async runEdgeInference(imagePath: string): Promise<EdgeFinalizePayload> {
+    let inferStartedAt = Date.now();
+    try {
+      await edgeInferenceEngine.loadModel();
+      inferStartedAt = Date.now();
+      const output = await edgeInferenceEngine.predict(imagePath);
+      return {
+        deviceCapable: true,
+        edgeResult: output.result,
+        edgeRuntime: output.runtime,
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "edge inference failed";
+      const inferMs = Math.max(1, Date.now() - inferStartedAt);
+      return {
+        deviceCapable: false,
+        edgeRuntime: edgeInferenceEngine.buildRuntime(message, inferMs),
+      };
+    }
+  },
+
+  onReady() {
+    const health = edgeInferenceEngine.getHealth();
+    if (!health.loaded) {
+      edgeInferenceEngine.loadModel().catch(() => {
+        return;
+      });
+    }
   },
 });
