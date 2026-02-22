@@ -12,9 +12,10 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
+import random
 import warnings
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from constants import INTENT_LABELS
 
@@ -43,6 +44,21 @@ class EpochMetrics:
     loss: float
     top1: float
     top3: float
+
+
+def set_seed(seed: int) -> None:
+    import torch
+
+    random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    try:
+        import numpy as np
+
+        np.random.seed(seed)
+    except ImportError:
+        pass
 
 
 def train_one_epoch(model, loader, criterion, optimizer, device, num_classes: int) -> EpochMetrics:
@@ -82,7 +98,7 @@ def train_one_epoch(model, loader, criterion, optimizer, device, num_classes: in
     )
 
 
-def evaluate(model, loader, criterion, device, num_classes: int) -> EpochMetrics:
+def evaluate(model, loader, criterion, device, num_classes: int) -> Tuple[EpochMetrics, List[List[int]]]:
     import torch
 
     model.eval()
@@ -90,6 +106,7 @@ def evaluate(model, loader, criterion, device, num_classes: int) -> EpochMetrics
     correct_top1 = 0
     correct_top3 = 0
     total = 0
+    confusion = [[0 for _ in range(num_classes)] for _ in range(num_classes)]
 
     with torch.no_grad():
         for images, labels in loader:
@@ -104,16 +121,21 @@ def evaluate(model, loader, criterion, device, num_classes: int) -> EpochMetrics
 
             top1 = logits.argmax(dim=1)
             correct_top1 += (top1 == labels).sum().item()
+            label_values = labels.detach().cpu().tolist()
+            pred_values = top1.detach().cpu().tolist()
+            for truth, pred in zip(label_values, pred_values):
+                confusion[int(truth)][int(pred)] += 1
 
             k = min(3, num_classes)
             topk = logits.topk(k=k, dim=1).indices
             correct_top3 += topk.eq(labels.view(-1, 1)).any(dim=1).sum().item()
 
-    return EpochMetrics(
+    metrics = EpochMetrics(
         loss=running_loss / max(total, 1),
         top1=correct_top1 / max(total, 1),
         top3=correct_top3 / max(total, 1),
     )
+    return metrics, confusion
 
 
 def build_datasets(dataset_root: pathlib.Path, input_size: int, download: bool):
@@ -228,6 +250,8 @@ def main() -> None:
     parser.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"])
     parser.add_argument("--download", action="store_true")
     parser.add_argument("--feedback", type=pathlib.Path, default=None)
+    parser.add_argument("--resume-checkpoint", type=pathlib.Path, default=None)
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--pretrained", action=argparse.BooleanOptionalAction, default=True)
     args = parser.parse_args()
 
@@ -240,6 +264,8 @@ def main() -> None:
         raise SystemExit(
             "Missing training dependencies. Run: pip install -r ml/training/requirements.txt"
         ) from exc
+
+    set_seed(args.seed)
 
     if args.device == "auto":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -265,11 +291,15 @@ def main() -> None:
         )
         num_workers = 0
 
+    loader_generator = torch.Generator()
+    loader_generator.manual_seed(args.seed)
+
     train_loader = DataLoader(
         train_ds,
         batch_size=args.batch_size,
         shuffle=True,
         num_workers=num_workers,
+        generator=loader_generator,
     )
     test_loader = DataLoader(
         test_ds,
@@ -282,17 +312,41 @@ def main() -> None:
     model = models.mobilenet_v3_small(weights=weights)
     in_features = model.classifier[3].in_features
     model.classifier[3] = nn.Linear(in_features, len(INTENT_LABELS))
+    resumed_from: Optional[str] = None
+    history: List[Dict] = []
+
+    if args.resume_checkpoint is not None:
+        if not args.resume_checkpoint.exists():
+            raise SystemExit(f"resume checkpoint not found: {args.resume_checkpoint}")
+        resume_ckpt = torch.load(args.resume_checkpoint, map_location="cpu")
+        resume_state_dict = resume_ckpt.get("model_state_dict") or resume_ckpt.get("state_dict")
+        if resume_state_dict is None:
+            raise SystemExit("resume checkpoint missing model_state_dict/state_dict")
+        missing_keys, unexpected_keys = model.load_state_dict(resume_state_dict, strict=False)
+        if missing_keys or unexpected_keys:
+            warnings.warn(
+                f"resume checkpoint loaded with key mismatch; missing={missing_keys}, unexpected={unexpected_keys}"
+            )
+        resumed_from = str(args.resume_checkpoint)
+        raw_history = resume_ckpt.get("history", [])
+        if isinstance(raw_history, list):
+            history = list(raw_history)
+
     model.to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
 
     best_eval_top1 = 0.0
-    history = []
+    for row in history:
+        best_eval_top1 = max(best_eval_top1, float(row.get("eval_top1", 0.0)))
 
-    for epoch in range(1, args.epochs + 1):
+    latest_confusion = [[0 for _ in INTENT_LABELS] for _ in INTENT_LABELS]
+    start_epoch = len(history) + 1
+    end_epoch = start_epoch + args.epochs
+    for epoch in range(start_epoch, end_epoch):
         train_metrics = train_one_epoch(model, train_loader, criterion, optimizer, device, len(INTENT_LABELS))
-        eval_metrics = evaluate(model, test_loader, criterion, device, len(INTENT_LABELS))
+        eval_metrics, latest_confusion = evaluate(model, test_loader, criterion, device, len(INTENT_LABELS))
 
         history.append(
             {
@@ -315,6 +369,7 @@ def main() -> None:
     checkpoint_path = args.output_dir / f"{args.model_version}.pt"
     metrics_path = args.output_dir / "metrics.json"
     priors_path = args.output_dir / "intent_priors.json"
+    confusion_path = args.output_dir / "confusion_matrix.json"
 
     torch.save(
         {
@@ -325,6 +380,8 @@ def main() -> None:
             "intent_labels": INTENT_LABELS,
             "intent_priors": priors,
             "history": history,
+            "seed": args.seed,
+            "resumed_from": resumed_from,
         },
         checkpoint_path,
     )
@@ -340,6 +397,8 @@ def main() -> None:
         "records": len(feedback_records),
         "effective_samples": round(effective_samples, 3),
         "checkpoint": str(checkpoint_path),
+        "resumed_from": resumed_from,
+        "seed": args.seed,
         "intent_priors": priors,
         "history": history,
     }
@@ -359,7 +418,28 @@ def main() -> None:
             indent=2,
         )
 
-    print(json.dumps({"checkpoint": str(checkpoint_path), "metrics": str(metrics_path)}, ensure_ascii=True))
+    with confusion_path.open("w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "model_version": args.model_version,
+                "labels": INTENT_LABELS,
+                "matrix": latest_confusion,
+            },
+            f,
+            ensure_ascii=True,
+            indent=2,
+        )
+
+    print(
+        json.dumps(
+            {
+                "checkpoint": str(checkpoint_path),
+                "metrics": str(metrics_path),
+                "confusion_matrix": str(confusion_path),
+            },
+            ensure_ascii=True,
+        )
+    )
 
 
 if __name__ == "__main__":

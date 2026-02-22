@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0] - 2026-02-22
+
+### Added
+- Training script `ml/training/scripts/train.py` now supports `--resume-checkpoint` incremental training.
+- Training artifacts now include `confusion_matrix.json` alongside `metrics.json` and `intent_priors.json`.
+- New feedback data cleaning script: `ml/training/scripts/data_cleaning.py` (dedup + suspicious user down-weight + label checks).
+- New manifest builder: `ml/training/scripts/build_training_manifest.py` (public + feedback weighted merge).
+- New active-learning task generator: `ml/training/scripts/generate_active_learning_tasks.py` (40/40/20 strategy output).
+- New unit tests for data cleaning, manifest build, and active-learning task generation.
+
+### Changed
+- Makefile adds reusable pipeline targets: `clean-feedback-data`, `build-training-manifest`, `active-learning-daily`, `train-vision-resume`.
+- Training script now records reproducibility metadata (`seed`, `resumed_from`) in checkpoint and metrics outputs.
+
 ## [0.3.0] - 2026-02-22
 
 ### Added

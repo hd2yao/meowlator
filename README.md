@@ -3,7 +3,7 @@
 Monorepo for a WeChat Mini Program that performs edge-first cat intent inference with cloud fallback,
 and continuously improves with user feedback.
 
-Current project version: `0.3.0` (see `/Users/dysania/program/meowlator/VERSION`).
+Current project version: `0.4.0` (see `/Users/dysania/program/meowlator/VERSION`).
 
 ## Structure
 
@@ -49,31 +49,45 @@ Quick smoke training (small synthetic dataset, fast sanity check):
 make train-vision-smoke
 ```
 
-2. Export ONNX (and INT8 quantized ONNX):
+2. Build feedback data pipeline (clean -> manifest -> active-learning tasks):
+
+```bash
+make clean-feedback-data
+make build-training-manifest
+make active-learning-daily
+```
+
+Resume training from an existing checkpoint:
+
+```bash
+make train-vision-resume
+```
+
+3. Export ONNX (and INT8 quantized ONNX):
 
 ```bash
 make export-onnx
 ```
 
-3. Optional: load priors into inference service:
+4. Optional: load priors into inference service:
 
 ```bash
 export MODEL_PRIORS_PATH=/Users/dysania/program/meowlator/ml/training/artifacts/mobilenetv3-small-v2/intent_priors.json
 ```
 
-4. Record a functional node after each feature implementation:
+5. Record a functional node after each feature implementation:
 
 ```bash
 python3 /Users/dysania/program/meowlator/tools/record_node.py \
-  --node-id N004 \
-  --version 0.3.0 \
-  --area inference \
+  --node-id N005 \
+  --version 0.4.0 \
+  --area training-pipeline \
   --functional-node \"describe feature\" \
   --verification \"make test\" \
   --commit <commit_hash>
 ```
 
-5. Mini Program edge inference now reports runtime metadata. `POST /v1/inference/finalize` can include:
+6. Mini Program edge inference reports runtime metadata. `POST /v1/inference/finalize` can include:
 
 ```json
 {
