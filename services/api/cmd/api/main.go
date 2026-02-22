@@ -55,6 +55,9 @@ func main() {
 		RateLimitPerUserMin: cfg.RateLimitPerUserMin,
 		RateLimitPerIPMin:   cfg.RateLimitPerIPMin,
 		AdminToken:          cfg.AdminToken,
+		WhitelistEnabled:    cfg.WhitelistEnabled,
+		WhitelistUsers:      cfg.WhitelistUsers,
+		WhitelistDailyQuota: cfg.WhitelistDailyQuota,
 	})
 	mux := http.NewServeMux()
 	h.Register(mux)

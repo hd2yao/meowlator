@@ -131,6 +131,9 @@ export EDGE_DEVICE_WHITELIST=iPhone15,Android
 export RATE_LIMIT_PER_USER_MIN=120
 export RATE_LIMIT_PER_IP_MIN=300
 export ADMIN_TOKEN=dev-admin-token
+export WHITELIST_ENABLED=true
+export WHITELIST_USERS=user_a,user_b
+export WHITELIST_DAILY_QUOTA=100
 ```
 
 10. Release operation docs:

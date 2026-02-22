@@ -32,15 +32,22 @@ type HandlerOptions struct {
 	RateLimitPerUserMin int
 	RateLimitPerIPMin   int
 	AdminToken          string
+	WhitelistEnabled    bool
+	WhitelistUsers      []string
+	WhitelistDailyQuota int
 }
 
 type Handler struct {
-	svc              *app.Service
-	limiter          *requestLimiter
-	rateLimitUserMin int
-	rateLimitIPMin   int
-	adminToken       string
-	signatureMaxSkew time.Duration
+	svc                 *app.Service
+	limiter             *requestLimiter
+	quotaLimiter        *dailyQuotaLimiter
+	rateLimitUserMin    int
+	rateLimitIPMin      int
+	adminToken          string
+	signatureMaxSkew    time.Duration
+	whitelistEnabled    bool
+	whitelistUsers      map[string]struct{}
+	whitelistDailyQuota int
 }
 
 func NewHandler(svc *app.Service, opts HandlerOptions) *Handler {
@@ -50,13 +57,28 @@ func NewHandler(svc *app.Service, opts HandlerOptions) *Handler {
 	if opts.RateLimitPerIPMin <= 0 {
 		opts.RateLimitPerIPMin = 300
 	}
+	if opts.WhitelistDailyQuota <= 0 {
+		opts.WhitelistDailyQuota = 100
+	}
+	whitelistUsers := make(map[string]struct{}, len(opts.WhitelistUsers))
+	for _, userID := range opts.WhitelistUsers {
+		trimmed := strings.TrimSpace(userID)
+		if trimmed == "" {
+			continue
+		}
+		whitelistUsers[trimmed] = struct{}{}
+	}
 	return &Handler{
-		svc:              svc,
-		limiter:          newRequestLimiter(),
-		rateLimitUserMin: opts.RateLimitPerUserMin,
-		rateLimitIPMin:   opts.RateLimitPerIPMin,
-		adminToken:       opts.AdminToken,
-		signatureMaxSkew: 5 * time.Minute,
+		svc:                 svc,
+		limiter:             newRequestLimiter(),
+		quotaLimiter:        newDailyQuotaLimiter(),
+		rateLimitUserMin:    opts.RateLimitPerUserMin,
+		rateLimitIPMin:      opts.RateLimitPerIPMin,
+		adminToken:          opts.AdminToken,
+		signatureMaxSkew:    5 * time.Minute,
+		whitelistEnabled:    opts.WhitelistEnabled,
+		whitelistUsers:      whitelistUsers,
+		whitelistDailyQuota: opts.WhitelistDailyQuota,
 	}
 }
 
@@ -105,6 +127,16 @@ func (h *Handler) withAuth(next http.HandlerFunc) http.HandlerFunc {
 		if err := h.svc.ValidateSession(r.Context(), userID, token); err != nil {
 			writeDomainError(w, err)
 			return
+		}
+		if h.whitelistEnabled {
+			if _, ok := h.whitelistUsers[userID]; !ok {
+				writeError(w, http.StatusForbidden, "user is not in whitelist")
+				return
+			}
+			if !h.quotaLimiter.Allow(userID, h.whitelistDailyQuota, time.Now()) {
+				writeError(w, http.StatusTooManyRequests, "whitelist daily quota exceeded")
+				return
+			}
 		}
 		ctx := context.WithValue(r.Context(), ctxUserIDKey, userID)
 		ctx = context.WithValue(ctx, ctxSessionTokenKey, token)
@@ -567,5 +599,38 @@ func (l *requestLimiter) Allow(key string, limit int, now time.Time) bool {
 		return false
 	}
 	bucket.count++
+	return true
+}
+
+type dailyQuotaLimiter struct {
+	mu      sync.Mutex
+	records map[string]*quotaBucket
+}
+
+type quotaBucket struct {
+	day   string
+	count int
+}
+
+func newDailyQuotaLimiter() *dailyQuotaLimiter {
+	return &dailyQuotaLimiter{records: map[string]*quotaBucket{}}
+}
+
+func (l *dailyQuotaLimiter) Allow(userID string, dailyQuota int, now time.Time) bool {
+	if dailyQuota <= 0 {
+		return true
+	}
+	day := now.Format("2006-01-02")
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	record, ok := l.records[userID]
+	if !ok || record.day != day {
+		l.records[userID] = &quotaBucket{day: day, count: 1}
+		return true
+	}
+	if record.count >= dailyQuota {
+		return false
+	}
+	record.count++
 	return true
 }

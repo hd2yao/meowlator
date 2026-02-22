@@ -22,6 +22,9 @@ type Config struct {
 	RateLimitPerUserMin    int
 	RateLimitPerIPMin      int
 	AdminToken             string
+	WhitelistEnabled       bool
+	WhitelistUsers         []string
+	WhitelistDailyQuota    int
 }
 
 func Load() Config {
@@ -40,6 +43,9 @@ func Load() Config {
 		RateLimitPerUserMin:    getEnvInt("RATE_LIMIT_PER_USER_MIN", 120),
 		RateLimitPerIPMin:      getEnvInt("RATE_LIMIT_PER_IP_MIN", 300),
 		AdminToken:             getEnv("ADMIN_TOKEN", "dev-admin-token"),
+		WhitelistEnabled:       getEnvBool("WHITELIST_ENABLED", false),
+		WhitelistUsers:         getEnvList("WHITELIST_USERS", []string{}),
+		WhitelistDailyQuota:    getEnvInt("WHITELIST_DAILY_QUOTA", 100),
 	}
 }
 

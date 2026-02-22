@@ -32,3 +32,20 @@ func TestRequestLimiterAllow(t *testing.T) {
 		t.Fatalf("new window should pass")
 	}
 }
+
+func TestDailyQuotaLimiter(t *testing.T) {
+	limiter := newDailyQuotaLimiter()
+	now := time.Unix(1700000000, 0)
+	if !limiter.Allow("u1", 2, now) {
+		t.Fatalf("first quota should pass")
+	}
+	if !limiter.Allow("u1", 2, now) {
+		t.Fatalf("second quota should pass")
+	}
+	if limiter.Allow("u1", 2, now) {
+		t.Fatalf("third quota should be blocked")
+	}
+	if !limiter.Allow("u1", 2, now.Add(24*time.Hour)) {
+		t.Fatalf("next day should reset quota")
+	}
+}

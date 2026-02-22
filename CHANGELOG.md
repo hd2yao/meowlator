@@ -5,6 +5,7 @@
 ### Added
 - Session auth flow: `POST /v1/auth/wechat/login` + API bearer session validation.
 - Request protection: per-user/per-IP rate limiting and signed request verification for sample upload-url / delete APIs.
+- White-list launch control: optional whitelist gating and per-user daily quota.
 - Admin model release APIs: `POST /v1/admin/models/register`, `POST /v1/admin/models/rollout`, `POST /v1/admin/models/activate`.
 - Client config extensions: `edgeDeviceWhitelist`, `modelRollout`, `riskEnabled`, `abBucketRules`.
 - Data migrations for release readiness: `user_sessions`, `active_learning_tasks`, `model_evaluations`, `risk_events`, model rollout bucket column and sample indexes.

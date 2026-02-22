@@ -53,6 +53,9 @@ services:
       RATE_LIMIT_PER_USER_MIN: "120"
       RATE_LIMIT_PER_IP_MIN: "300"
       ADMIN_TOKEN: "dev-admin-token"
+      WHITELIST_ENABLED: "false"
+      WHITELIST_USERS: ""
+      WHITELIST_DAILY_QUOTA: "100"
     ports:
       - "8080:8080"
     depends_on:

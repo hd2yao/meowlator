@@ -24,6 +24,8 @@ Protected APIs require headers:
 - `Authorization: Bearer <sessionToken>`
 - `X-User-Id: <userId>`
 
+If `WHITELIST_ENABLED=true`, only users in `WHITELIST_USERS` can call protected APIs, with per-user daily quota controlled by `WHITELIST_DAILY_QUOTA`.
+
 ## POST /v1/samples/upload-url
 
 Request:
