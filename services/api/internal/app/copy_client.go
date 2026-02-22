@@ -54,10 +54,10 @@ func (c *CopyHTTPClient) Generate(ctx context.Context, result domain.InferenceRe
 	if c.enabled {
 		block, err := c.generateFromLLM(ctx, result, styleVersion)
 		if err == nil {
-			return block, nil
+			return enforceRiskDisclaimer(block, result), nil
 		}
 	}
-	return generateTemplateCopy(result), nil
+	return enforceRiskDisclaimer(generateTemplateCopy(result), result), nil
 }
 
 func (c *CopyHTTPClient) generateFromLLM(ctx context.Context, result domain.InferenceResult, styleVersion string) (domain.CopyBlock, error) {
@@ -111,4 +111,23 @@ func generateTemplateCopy(result domain.InferenceResult) domain.CopyBlock {
 	evidence := fmt.Sprintf("依据：状态(紧张%s/兴奋%s/舒适%s) + 视觉证据 %s。", result.State.Tension, result.State.Arousal, result.State.Comfort, strings.Join(result.Evidence, "、"))
 	title := fmt.Sprintf("主子发话：%s（翻译版）", top)
 	return domain.CopyBlock{CatLine: catLine, Evidence: evidence, ShareTitle: title}
+}
+
+func enforceRiskDisclaimer(block domain.CopyBlock, result domain.InferenceResult) domain.CopyBlock {
+	if result.Risk == nil {
+		return block
+	}
+	disclaimer := strings.TrimSpace(result.Risk.Disclaimer)
+	if disclaimer == "" {
+		disclaimer = domain.PainRiskDisclaimer
+	}
+	if strings.Contains(block.Evidence, disclaimer) {
+		return block
+	}
+	if strings.TrimSpace(block.Evidence) == "" {
+		block.Evidence = disclaimer
+		return block
+	}
+	block.Evidence = block.Evidence + " " + disclaimer
+	return block
 }

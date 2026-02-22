@@ -78,6 +78,21 @@ When `edgeRuntime` is provided, `result.edgeMeta` will be returned:
 }
 ```
 
+When `PAIN_RISK_ENABLED=true`, response may include `result.risk`:
+
+```json
+{
+  "result": {
+    "risk": {
+      "painRiskScore": 0.78,
+      "painRiskLevel": "HIGH",
+      "riskEvidence": ["紧张度高", "舒适度低", "结合视觉行为证据"],
+      "disclaimer": "非医疗诊断，仅作风险提示；若持续异常请咨询兽医。"
+    }
+  }
+}
+```
+
 ## POST /v1/feedback
 
 - `isCorrect=true` means confirmed label with weight 0.6

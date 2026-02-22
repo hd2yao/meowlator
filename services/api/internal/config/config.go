@@ -16,6 +16,7 @@ type Config struct {
 	CloudFallbackThreshold float64
 	CopyTimeout            time.Duration
 	ModelVersion           string
+	PainRiskEnabled        bool
 }
 
 func Load() Config {
@@ -29,6 +30,7 @@ func Load() Config {
 		CloudFallbackThreshold: getEnvFloat("CLOUD_FALLBACK_THRESHOLD", 0.45),
 		CopyTimeout:            time.Duration(getEnvInt("COPY_TIMEOUT_MS", 1200)) * time.Millisecond,
 		ModelVersion:           getEnv("MODEL_VERSION", "mobilenetv3-small-int8-v1"),
+		PainRiskEnabled:        getEnvBool("PAIN_RISK_ENABLED", false),
 	}
 }
 
@@ -57,6 +59,18 @@ func getEnvFloat(key string, defaultValue float64) float64 {
 		return defaultValue
 	}
 	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return defaultValue
+	}
+	return parsed
+}
+
+func getEnvBool(key string, defaultValue bool) bool {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	parsed, err := strconv.ParseBool(value)
 	if err != nil {
 		return defaultValue
 	}

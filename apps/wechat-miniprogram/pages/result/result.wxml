@@ -9,6 +9,13 @@
     <view>{{copy.evidence}}</view>
   </view>
 
+  <view class="card risk-card" wx:if="{{result.risk}}">
+    <view class="section-title">疑似不适风险</view>
+    <view>风险等级：{{riskLevelText}}（{{riskScoreText}}）</view>
+    <view wx:if="{{riskEvidenceText}}">风险依据：{{riskEvidenceText}}</view>
+    <view class="risk-disclaimer">{{riskDisclaimerText}}</view>
+  </view>
+
   <view class="card">
     <view class="section-title">意图 Top3</view>
     <view wx:for="{{intentTop3Display}}" wx:key="label">

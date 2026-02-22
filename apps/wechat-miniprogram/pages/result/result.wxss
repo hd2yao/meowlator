@@ -26,3 +26,14 @@
   border-radius: 12rpx;
   padding: 20rpx;
 }
+
+.risk-card {
+  border: 1px solid #ffb703;
+  background: #fff8e6;
+}
+
+.risk-disclaimer {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: #8d5524;
+}

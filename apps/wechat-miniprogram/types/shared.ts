@@ -24,6 +24,7 @@ export interface InferenceResult {
   evidence: string[];
   copyStyleVersion: string;
   edgeMeta?: EdgeMeta;
+  risk?: PainRisk;
 }
 
 export interface CopyBlock {
@@ -52,4 +53,11 @@ export interface EdgeRuntime {
 export interface EdgeMeta extends EdgeRuntime {
   fallbackUsed: boolean;
   usedEdgeResult: boolean;
+}
+
+export interface PainRisk {
+  painRiskScore: number;
+  painRiskLevel: "LOW" | "MID" | "HIGH";
+  riskEvidence: string[];
+  disclaimer: string;
 }

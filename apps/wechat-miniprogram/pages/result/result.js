@@ -16,6 +16,10 @@ Page({
     result: null,
     intentTop3Display: [],
     copy: { catLine: "", evidence: "", shareTitle: "" },
+    riskLevelText: "",
+    riskScoreText: "",
+    riskEvidenceText: "",
+    riskDisclaimerText: "",
     sampleId: "",
     showLabelPicker: false,
     intentOptions: INTENTS,
@@ -34,10 +38,15 @@ Page({
       label: item.label,
       probPercent: Math.round((item.prob || 0) * 100),
     }));
+    const risk = payload.result.risk;
     this.setData({
       result: payload.result,
       intentTop3Display,
       copy: payload.copy,
+      riskLevelText: risk ? risk.painRiskLevel : "",
+      riskScoreText: risk ? `${Math.round((risk.painRiskScore || 0) * 100)}%` : "",
+      riskEvidenceText: risk ? (risk.riskEvidence || []).join("、") : "",
+      riskDisclaimerText: risk ? risk.disclaimer : "",
       sampleId: payload.sampleId,
       showLabelPicker: payload.needFeedback,
     });

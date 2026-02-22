@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0] - 2026-02-22
+
+### Added
+- API inference result supports optional `risk` block (`painRiskScore`, `painRiskLevel`, `riskEvidence`, `disclaimer`).
+- Service-level risk evaluation (`EvaluatePainRisk`) based on state + intent signals.
+- Runtime feature flag: `PAIN_RISK_ENABLED` for enabling risk branch.
+- Mini Program result page adds risk card and fixed non-diagnostic disclaimer rendering.
+
+### Changed
+- Copy generation now enforces risk disclaimer when risk branch is present.
+- `POST /v1/inference/finalize` docs include risk response example.
+
 ## [0.4.0] - 2026-02-22
 
 ### Added

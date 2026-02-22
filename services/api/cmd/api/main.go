@@ -46,6 +46,7 @@ func main() {
 		app.Thresholds{EdgeAccept: cfg.EdgeAcceptThreshold, CloudFallback: cfg.CloudFallbackThreshold},
 		cfg.DefaultRetentionDays,
 		cfg.ModelVersion,
+		cfg.PainRiskEnabled,
 	)
 
 	h := api.NewHandler(svc)

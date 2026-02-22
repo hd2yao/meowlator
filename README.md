@@ -3,7 +3,7 @@
 Monorepo for a WeChat Mini Program that performs edge-first cat intent inference with cloud fallback,
 and continuously improves with user feedback.
 
-Current project version: `0.4.0` (see `/Users/dysania/program/meowlator/VERSION`).
+Current project version: `0.5.0` (see `/Users/dysania/program/meowlator/VERSION`).
 
 ## Structure
 
@@ -99,6 +99,12 @@ python3 /Users/dysania/program/meowlator/tools/record_node.py \
     "deviceModel": "iPhone15,2"
   }
 }
+```
+
+7. Optional: enable pain-risk reminder branch in API (non-diagnostic):
+
+```bash
+export PAIN_RISK_ENABLED=true
 ```
 
 ## Compliance defaults

@@ -88,6 +88,7 @@ type InferenceResult struct {
 	Evidence         []string     `json:"evidence"`
 	CopyStyleVersion string       `json:"copyStyleVersion"`
 	EdgeMeta         *EdgeMeta    `json:"edgeMeta,omitempty"`
+	Risk             *RiskInfo    `json:"risk,omitempty"`
 }
 
 func (r *InferenceResult) Validate() error {
@@ -110,6 +111,11 @@ func (r *InferenceResult) Validate() error {
 	}
 	if r.Source != "EDGE" && r.Source != "CLOUD" {
 		return errors.New("source must be EDGE or CLOUD")
+	}
+	if r.Risk != nil {
+		if err := r.Risk.Validate(); err != nil {
+			return err
+		}
 	}
 	return nil
 }

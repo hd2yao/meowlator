@@ -39,9 +39,10 @@ type Service struct {
 	thresholds    Thresholds
 	retentionDays int
 	modelVersion  string
+	painRisk      bool
 }
 
-func NewService(repo Repository, inference InferenceClient, copyClient CopyClient, thresholds Thresholds, retentionDays int, modelVersion string) *Service {
+func NewService(repo Repository, inference InferenceClient, copyClient CopyClient, thresholds Thresholds, retentionDays int, modelVersion string, painRisk bool) *Service {
 	if retentionDays <= 0 {
 		retentionDays = 7
 	}
@@ -55,6 +56,7 @@ func NewService(repo Repository, inference InferenceClient, copyClient CopyClien
 		thresholds:    thresholds,
 		retentionDays: retentionDays,
 		modelVersion:  modelVersion,
+		painRisk:      painRisk,
 	}
 }
 
@@ -188,6 +190,9 @@ func (s *Service) FinalizeInference(ctx context.Context, in FinalizeInput) (*Fin
 			FallbackUsed:   fallbackUsed,
 			UsedEdgeResult: finalResult.Source == "EDGE",
 		}
+	}
+	if s.painRisk {
+		finalResult.Risk = domain.EvaluatePainRisk(finalResult)
 	}
 
 	finalResult.CopyStyleVersion = "v1"
