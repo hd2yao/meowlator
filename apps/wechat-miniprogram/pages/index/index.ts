@@ -1,6 +1,7 @@
-import { finalizeInference, getAuthHeader, getUploadURL } from "../../utils/api";
+import { finalizeInference, getAuthHeader, getClientConfig, getUploadURL } from "../../utils/api";
 import { edgeInferenceEngine } from "../../utils/edge_inference";
 import type { EdgeRuntime, InferenceResult } from "../../types/shared";
+import type { ClientConfig } from "../../utils/api";
 
 interface EdgeFinalizePayload {
   deviceCapable: boolean;
@@ -18,7 +19,8 @@ Page({
     this.setData({ loading: true, message: "" });
     try {
       const imagePath = await this.pickImage();
-      const edgePayload = await this.runEdgeInference(imagePath);
+      const clientConfig = await this.fetchClientConfig();
+      const edgePayload = await this.runEdgeInference(imagePath, clientConfig);
 
       const app = getApp<{ globalData: { catId: string; lastResult?: unknown } }>();
       const uploadMeta = await getUploadURL(app.globalData.catId);
@@ -39,6 +41,14 @@ Page({
       this.setData({ message });
     } finally {
       this.setData({ loading: false });
+    }
+  },
+
+  async fetchClientConfig(): Promise<ClientConfig | undefined> {
+    try {
+      return await getClientConfig();
+    } catch (err) {
+      return undefined;
     }
   },
 
@@ -69,7 +79,21 @@ Page({
     });
   },
 
-  async runEdgeInference(imagePath: string): Promise<EdgeFinalizePayload> {
+  async runEdgeInference(imagePath: string, clientConfig?: ClientConfig): Promise<EdgeFinalizePayload> {
+    if (clientConfig) {
+      const selectedModel = clientConfig.modelRollout.selectedModel || clientConfig.modelVersion;
+      edgeInferenceEngine.configure({
+        modelVersion: selectedModel,
+        modelHash: `cfg-${selectedModel}`,
+      });
+      if (!edgeInferenceEngine.isDeviceAllowed(clientConfig.edgeDeviceWhitelist || [])) {
+        return {
+          deviceCapable: false,
+          edgeRuntime: edgeInferenceEngine.buildRuntime("device not in edge whitelist", 0, "DEVICE_NOT_WHITELISTED"),
+        };
+      }
+    }
+
     let inferStartedAt = Date.now();
     try {
       await edgeInferenceEngine.loadModel();

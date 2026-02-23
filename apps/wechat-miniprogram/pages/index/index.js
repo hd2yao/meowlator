@@ -1,4 +1,4 @@
-const { finalizeInference, getAuthHeader, getUploadURL } = require("../../utils/api");
+const { finalizeInference, getAuthHeader, getClientConfig, getUploadURL } = require("../../utils/api");
 const { edgeInferenceEngine } = require("../../utils/edge_inference");
 
 Page({
@@ -11,7 +11,8 @@ Page({
     this.setData({ loading: true, message: "" });
     try {
       const imagePath = await this.pickImage();
-      const edgePayload = await this.runEdgeInference(imagePath);
+      const clientConfig = await this.fetchClientConfig();
+      const edgePayload = await this.runEdgeInference(imagePath, clientConfig);
 
       const app = getApp();
       const uploadMeta = await getUploadURL(app.globalData.catId);
@@ -32,6 +33,14 @@ Page({
       this.setData({ message });
     } finally {
       this.setData({ loading: false });
+    }
+  },
+
+  async fetchClientConfig() {
+    try {
+      return await getClientConfig();
+    } catch (err) {
+      return undefined;
     }
   },
 
@@ -62,7 +71,21 @@ Page({
     });
   },
 
-  async runEdgeInference(imagePath) {
+  async runEdgeInference(imagePath, clientConfig) {
+    if (clientConfig) {
+      const selectedModel = (clientConfig.modelRollout && clientConfig.modelRollout.selectedModel) || clientConfig.modelVersion;
+      edgeInferenceEngine.configure({
+        modelVersion: selectedModel,
+        modelHash: `cfg-${selectedModel}`,
+      });
+      if (!edgeInferenceEngine.isDeviceAllowed(clientConfig.edgeDeviceWhitelist || [])) {
+        return {
+          deviceCapable: false,
+          edgeRuntime: edgeInferenceEngine.buildRuntime("device not in edge whitelist", 0, "DEVICE_NOT_WHITELISTED"),
+        };
+      }
+    }
+
     let inferStartedAt = Date.now();
     try {
       await edgeInferenceEngine.loadModel();

@@ -112,6 +112,26 @@ class EdgeInferenceEngine {
     this.loadMs = 0;
   }
 
+  configure(options) {
+    if (options && options.modelVersion && options.modelVersion.trim() !== "") {
+      this.modelVersion = options.modelVersion.trim();
+    }
+    if (options && options.modelHash && options.modelHash.trim() !== "") {
+      this.modelHash = options.modelHash.trim();
+    }
+  }
+
+  isDeviceAllowed(whitelist) {
+    if (!Array.isArray(whitelist) || whitelist.length === 0) {
+      return true;
+    }
+    const current = getDeviceModel().toLowerCase();
+    return whitelist
+      .map((item) => String(item || "").trim().toLowerCase())
+      .filter((item) => item.length > 0)
+      .some((item) => current.includes(item));
+  }
+
   async loadModel() {
     if (this.loaded) {
       return;
@@ -146,17 +166,17 @@ class EdgeInferenceEngine {
     };
   }
 
-  buildRuntime(failureReason, inferMs) {
-    const failureCode = failureReason ? "EDGE_RUNTIME_ERROR" : undefined;
+  buildRuntime(failureReason, inferMs, failureCode) {
+    const code = failureCode || (failureReason ? "EDGE_RUNTIME_ERROR" : undefined);
     return {
       engine: this.engineName,
       modelVersion: this.modelVersion,
       modelHash: this.modelHash,
       inputShape: "1x3x224x224",
       loadMs: this.loadMs,
-      inferMs,
+      inferMs: Math.max(0, inferMs),
       deviceModel: getDeviceModel(),
-      failureCode,
+      failureCode: code,
       failureReason: failureReason || undefined,
     };
   }

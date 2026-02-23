@@ -113,6 +113,10 @@ When `edgeRuntime` is provided, `result.edgeMeta` will be returned:
 }
 ```
 
+`failureCode` values currently used by mini-program:
+- `DEVICE_NOT_WHITELISTED`: device excluded by `edgeDeviceWhitelist`, direct cloud fallback.
+- `EDGE_RUNTIME_ERROR`: edge model load/infer failure.
+
 When `PAIN_RISK_ENABLED=true`, response may include `result.risk`:
 
 ```json

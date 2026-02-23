@@ -112,10 +112,30 @@ export interface EdgePrediction {
 
 export class EdgeInferenceEngine {
   private readonly engineName = "wx-heuristic-v1";
-  private readonly modelVersion = "mobilenetv3-small-int8-v2";
-  private readonly modelHash = "dev-hash-v1";
+  private modelVersion = "mobilenetv3-small-int8-v2";
+  private modelHash = "dev-hash-v1";
   private loaded = false;
   private loadMs = 0;
+
+  configure(options: { modelVersion?: string; modelHash?: string }): void {
+    if (options.modelVersion && options.modelVersion.trim() !== "") {
+      this.modelVersion = options.modelVersion.trim();
+    }
+    if (options.modelHash && options.modelHash.trim() !== "") {
+      this.modelHash = options.modelHash.trim();
+    }
+  }
+
+  isDeviceAllowed(whitelist: string[]): boolean {
+    if (!Array.isArray(whitelist) || whitelist.length === 0) {
+      return true;
+    }
+    const current = getDeviceModel().toLowerCase();
+    return whitelist
+      .map((item) => item.trim().toLowerCase())
+      .filter((item) => item.length > 0)
+      .some((item) => current.includes(item));
+  }
 
   async loadModel(): Promise<void> {
     if (this.loaded) {
@@ -151,17 +171,17 @@ export class EdgeInferenceEngine {
     };
   }
 
-  buildRuntime(failureReason: string, inferMs: number): EdgeRuntime {
-    const failureCode = failureReason ? "EDGE_RUNTIME_ERROR" : undefined;
+  buildRuntime(failureReason: string, inferMs: number, failureCode?: string): EdgeRuntime {
+    const code = failureCode || (failureReason ? "EDGE_RUNTIME_ERROR" : undefined);
     return {
       engine: this.engineName,
       modelVersion: this.modelVersion,
       modelHash: this.modelHash,
       inputShape: "1x3x224x224",
       loadMs: this.loadMs,
-      inferMs,
+      inferMs: Math.max(0, inferMs),
       deviceModel: getDeviceModel(),
-      failureCode,
+      failureCode: code,
       failureReason: failureReason || undefined,
     };
   }

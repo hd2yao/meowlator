@@ -16,7 +16,7 @@ interface WechatLoginResponse {
   expiresAt: number;
 }
 
-interface ClientConfig {
+export interface ClientConfig {
   edgeAcceptThreshold: number;
   cloudFallbackThreshold: number;
   copyStyleVersion: string;
