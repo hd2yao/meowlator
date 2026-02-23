@@ -12,3 +12,4 @@ This file records every functional implementation node in chronological order.
 | N006 | 2026-02-22 | 0.5.0 | Pain Risk Reminder | Added optional pain-risk scoring branch, API risk output schema, disclaimer enforcement in copy generation, and mini-program risk card rendering (non-diagnostic). | `make test` | `3349df5` |
 | N007 | 2026-02-23 | 1.0.0 | Release Readiness | Added session auth, rate limit/signature guard, model rollout admin APIs, release migrations, cleanup task, and v0.6 training gate scripts for white-list launch readiness. | `make test` | `904400c` |
 | N008 | 2026-02-23 | 1.0.0 | White-list Quota Control | Added runtime whitelist gating and per-user daily quota control for protected APIs, with config and docs updates. | `make test` | `3196cff` |
+| N009 | 2026-02-23 | 1.0.0 | rollout-routing | Deterministic gray rollout user selection | make test | `7d346e9` |
