@@ -14,3 +14,4 @@ This file records every functional implementation node in chronological order.
 | N008 | 2026-02-23 | 1.0.0 | White-list Quota Control | Added runtime whitelist gating and per-user daily quota control for protected APIs, with config and docs updates. | `make test` | `3196cff` |
 | N009 | 2026-02-23 | 1.0.0 | rollout-routing | Deterministic gray rollout user selection | make test | `7d346e9` |
 | N010 | 2026-02-23 | 1.0.0 | edge-rollout-client | Mini program consumes selectedModel and whitelist fallback | make test | `ab125f4` |
+| N011 | 2026-02-23 | 1.0.0 | docs-knowledge | Expanded project manual knowledge-point deep dive and coverage checklist | manual review + command references | `9993102` |
