@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/url"
 	"time"
 
@@ -23,6 +24,7 @@ type Repository interface {
 	UpsertModelRegistry(ctx context.Context, model domain.ModelRegistry) error
 	UpdateModelStatus(ctx context.Context, modelVersion string, status domain.ModelStatus, rolloutRatio float64, targetBucket int) error
 	GetActiveModel(ctx context.Context) (*domain.ModelRegistry, error)
+	GetModelByStatus(ctx context.Context, status domain.ModelStatus) (*domain.ModelRegistry, error)
 	SaveRiskEvent(ctx context.Context, sampleID string, risk *domain.RiskInfo) error
 }
 
@@ -280,9 +282,14 @@ type ClientConfigOutput struct {
 	ShareTemplates         []string `json:"shareTemplates"`
 	EdgeDeviceWhitelist    []string `json:"edgeDeviceWhitelist"`
 	ModelRollout           struct {
-		ActiveModel  string  `json:"activeModel"`
-		RolloutRatio float64 `json:"rolloutRatio"`
-		TargetBucket int     `json:"targetBucket"`
+		ActiveModel   string  `json:"activeModel"`
+		RolloutModel  string  `json:"rolloutModel"`
+		SelectedModel string  `json:"selectedModel"`
+		RolloutRatio  float64 `json:"rolloutRatio"`
+		TargetBucket  int     `json:"targetBucket"`
+		TotalBuckets  int     `json:"totalBuckets"`
+		UserBucket    int     `json:"userBucket"`
+		InRollout     bool    `json:"inRollout"`
 	} `json:"modelRollout"`
 	RiskEnabled   bool `json:"riskEnabled"`
 	ABBucketRules struct {
@@ -291,13 +298,16 @@ type ClientConfigOutput struct {
 }
 
 func (s *Service) ClientConfig(userID string) ClientConfigOutput {
-	bucket := repository.ABBucket(userID, 3)
+	const shareTemplateBuckets = 3
+	const rolloutBuckets = 100
+	shareBucket := repository.ABBucket(userID, shareTemplateBuckets)
+	rolloutBucket := repository.ABBucket(userID, rolloutBuckets)
 	out := ClientConfigOutput{
 		EdgeAcceptThreshold:    s.thresholds.EdgeAccept,
 		CloudFallbackThreshold: s.thresholds.CloudFallback,
 		CopyStyleVersion:       "v1",
 		ModelVersion:           s.modelVersion,
-		ABBucket:               bucket,
+		ABBucket:               shareBucket,
 		ShareTemplates: []string{
 			"我家主子刚发布了最新需求文档，速看！",
 			"猫总监在线发话：铲屎官请立即执行。",
@@ -306,18 +316,91 @@ func (s *Service) ClientConfig(userID string) ClientConfigOutput {
 		EdgeDeviceWhitelist: append([]string{}, s.edgeWhitelist...),
 		RiskEnabled:         s.painRisk,
 	}
-	out.ABBucketRules.TotalBuckets = 3
-	active, err := s.repo.GetActiveModel(context.Background())
-	if err == nil && active != nil {
+	out.ABBucketRules.TotalBuckets = shareTemplateBuckets
+	out.ModelRollout.ActiveModel = s.modelVersion
+	out.ModelRollout.SelectedModel = s.modelVersion
+	out.ModelRollout.RolloutRatio = 0
+	out.ModelRollout.TargetBucket = 0
+	out.ModelRollout.TotalBuckets = rolloutBuckets
+	out.ModelRollout.UserBucket = rolloutBucket
+	out.ModelRollout.InRollout = false
+
+	active, err := s.repo.GetModelByStatus(context.Background(), domain.ModelStatusActive)
+	if err == nil && active != nil && active.ModelVersion != "" {
 		out.ModelRollout.ActiveModel = active.ModelVersion
-		out.ModelRollout.RolloutRatio = active.RolloutRatio
-		out.ModelRollout.TargetBucket = active.TargetBucket
-	} else {
-		out.ModelRollout.ActiveModel = s.modelVersion
-		out.ModelRollout.RolloutRatio = 1.0
-		out.ModelRollout.TargetBucket = 0
+		out.ModelRollout.SelectedModel = active.ModelVersion
+		out.ModelVersion = active.ModelVersion
+	}
+
+	gray, err := s.repo.GetModelByStatus(context.Background(), domain.ModelStatusGray)
+	if err == nil && gray != nil && gray.ModelVersion != "" {
+		out.ModelRollout.RolloutModel = gray.ModelVersion
+		out.ModelRollout.RolloutRatio = clampRatio(gray.RolloutRatio)
+		out.ModelRollout.TargetBucket = normalizeBucket(gray.TargetBucket, rolloutBuckets)
+		inRollout := hitRolloutBucket(rolloutBucket, out.ModelRollout.TargetBucket, rolloutBuckets, out.ModelRollout.RolloutRatio)
+		// If ACTIVE model is missing, fallback to GRAY to keep serving a valid model.
+		if inRollout || out.ModelRollout.ActiveModel == "" {
+			out.ModelRollout.InRollout = inRollout
+			out.ModelRollout.SelectedModel = gray.ModelVersion
+			out.ModelVersion = gray.ModelVersion
+		}
+	}
+
+	if out.ModelRollout.ActiveModel == "" {
+		out.ModelRollout.ActiveModel = out.ModelVersion
+		if out.ModelRollout.SelectedModel == "" {
+			out.ModelRollout.SelectedModel = out.ModelVersion
+		}
 	}
 	return out
+}
+
+func clampRatio(value float64) float64 {
+	if value < 0 {
+		return 0
+	}
+	if value > 1 {
+		return 1
+	}
+	return value
+}
+
+func normalizeBucket(value, total int) int {
+	if total <= 0 {
+		return 0
+	}
+	n := value % total
+	if n < 0 {
+		n += total
+	}
+	return n
+}
+
+func hitRolloutBucket(userBucket, targetBucket, totalBuckets int, ratio float64) bool {
+	if totalBuckets <= 0 {
+		return false
+	}
+	ratio = clampRatio(ratio)
+	if ratio <= 0 {
+		return false
+	}
+	if ratio >= 1 {
+		return true
+	}
+	window := int(math.Ceil(ratio * float64(totalBuckets)))
+	if window <= 0 {
+		return false
+	}
+	if window >= totalBuckets {
+		return true
+	}
+	userBucket = normalizeBucket(userBucket, totalBuckets)
+	targetBucket = normalizeBucket(targetBucket, totalBuckets)
+	end := targetBucket + window
+	if end <= totalBuckets {
+		return userBucket >= targetBucket && userBucket < end
+	}
+	return userBucket >= targetBucket || userBucket < end-totalBuckets
 }
 
 type LoginInput struct {

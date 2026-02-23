@@ -244,16 +244,31 @@ func (r *MemoryRepository) UpdateModelStatus(ctx context.Context, modelVersion s
 }
 
 func (r *MemoryRepository) GetActiveModel(ctx context.Context) (*domain.ModelRegistry, error) {
+	model, err := r.GetModelByStatus(ctx, domain.ModelStatusActive)
+	if err == nil {
+		return model, nil
+	}
+	return r.GetModelByStatus(ctx, domain.ModelStatusGray)
+}
+
+func (r *MemoryRepository) GetModelByStatus(ctx context.Context, status domain.ModelStatus) (*domain.ModelRegistry, error) {
 	_ = ctx
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+	var selected *domain.ModelRegistry
 	for _, model := range r.models {
-		if model.Status == domain.ModelStatusActive || model.Status == domain.ModelStatusGray {
-			copyModel := *model
-			return &copyModel, nil
+		if model.Status != status {
+			continue
+		}
+		if selected == nil || model.CreatedAt.After(selected.CreatedAt) {
+			selected = model
 		}
 	}
-	return nil, domain.ErrNotFound
+	if selected == nil {
+		return nil, domain.ErrNotFound
+	}
+	copyModel := *selected
+	return &copyModel, nil
 }
 
 func (r *MemoryRepository) SaveRiskEvent(ctx context.Context, sampleID string, risk *domain.RiskInfo) error {

@@ -14,6 +14,7 @@
 
 ### Changed
 - `edgeRuntime` / `edgeMeta` schema extended with `modelHash`, `inputShape`, `failureCode`.
+- `GET /v1/metrics/client-config` now returns rollout selection metadata (`rolloutModel`, `selectedModel`, `inRollout`, rollout bucket info) and applies user-level gray routing deterministically.
 - Mini Program request layer now auto-login/authenticate, sends signed requests where required, and attaches auth headers for uploads.
 - Mini Program package version bumped to `1.0.0`.
 

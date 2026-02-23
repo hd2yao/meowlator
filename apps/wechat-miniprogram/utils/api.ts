@@ -26,8 +26,13 @@ interface ClientConfig {
   edgeDeviceWhitelist: string[];
   modelRollout: {
     activeModel: string;
+    rolloutModel?: string;
+    selectedModel?: string;
     rolloutRatio: number;
     targetBucket: number;
+    totalBuckets?: number;
+    userBucket?: number;
+    inRollout?: boolean;
   };
   riskEnabled: boolean;
   abBucketRules: { totalBuckets: number };

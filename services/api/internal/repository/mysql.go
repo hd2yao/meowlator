@@ -409,25 +409,37 @@ func (r *MySQLRepository) UpdateModelStatus(ctx context.Context, modelVersion st
 }
 
 func (r *MySQLRepository) GetActiveModel(ctx context.Context) (*domain.ModelRegistry, error) {
+	active, err := r.GetModelByStatus(ctx, domain.ModelStatusActive)
+	if err == nil {
+		return active, nil
+	}
+	if !errors.Is(err, domain.ErrNotFound) {
+		return nil, err
+	}
+	return r.GetModelByStatus(ctx, domain.ModelStatusGray)
+}
+
+func (r *MySQLRepository) GetModelByStatus(ctx context.Context, status domain.ModelStatus) (*domain.ModelRegistry, error) {
+	if !status.IsValid() {
+		return nil, domain.ErrBadRequest
+	}
 	row := r.db.QueryRowContext(ctx,
 		`SELECT model_version, task_scope, metrics_json, status, rollout_ratio, target_bucket, created_at
 		 FROM model_registry
-		 WHERE status IN (?, ?)
-		 ORDER BY status = ? DESC, created_at DESC
+		 WHERE status = ?
+		 ORDER BY created_at DESC
 		 LIMIT 1`,
-		string(domain.ModelStatusActive),
-		string(domain.ModelStatusGray),
-		string(domain.ModelStatusActive),
+		string(status),
 	)
 	var out domain.ModelRegistry
-	var status string
-	if err := row.Scan(&out.ModelVersion, &out.TaskScope, &out.MetricsJSON, &status, &out.RolloutRatio, &out.TargetBucket, &out.CreatedAt); err != nil {
+	var statusText string
+	if err := row.Scan(&out.ModelVersion, &out.TaskScope, &out.MetricsJSON, &statusText, &out.RolloutRatio, &out.TargetBucket, &out.CreatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, domain.ErrNotFound
 		}
 		return nil, err
 	}
-	out.Status = domain.ModelStatus(status)
+	out.Status = domain.ModelStatus(statusText)
 	return &out, nil
 }
 

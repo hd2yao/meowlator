@@ -146,6 +146,33 @@ This endpoint requires request signature headers (`X-Req-Ts`, `X-Req-Sig`).
 
 Returns thresholds, model version, AB config, whitelist and rollout metadata.
 
+Response sample:
+
+```json
+{
+  "edgeAcceptThreshold": 0.7,
+  "cloudFallbackThreshold": 0.45,
+  "copyStyleVersion": "v1",
+  "modelVersion": "mobilenetv3-small-int8-v2",
+  "abBucket": 1,
+  "edgeDeviceWhitelist": ["iPhone15", "Android"],
+  "modelRollout": {
+    "activeModel": "mobilenetv3-small-int8-v1",
+    "rolloutModel": "mobilenetv3-small-int8-v2",
+    "selectedModel": "mobilenetv3-small-int8-v2",
+    "rolloutRatio": 0.1,
+    "targetBucket": 30,
+    "totalBuckets": 100,
+    "userBucket": 34,
+    "inRollout": true
+  },
+  "riskEnabled": false,
+  "abBucketRules": {
+    "totalBuckets": 3
+  }
+}
+```
+
 ## POST /v1/admin/models/register
 
 Registers candidate model metrics (internal endpoint, requires `X-Admin-Token`).
