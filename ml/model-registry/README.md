@@ -1,6 +1,6 @@
-# Model Registry
+# 模型注册目录
 
-Store model release metadata as JSON files. Example schema:
+该目录用于存放模型发布元数据（JSON 文件）。建议字段：
 
 - `model_version`
 - `task_scope`

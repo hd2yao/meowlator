@@ -1,8 +1,8 @@
-# Meowlator API v1
+# Meowlator API v1 文档
 
 ## POST /v1/auth/wechat/login
 
-Request:
+请求示例：
 
 ```json
 {
@@ -10,7 +10,7 @@ Request:
 }
 ```
 
-Response:
+响应示例：
 
 ```json
 {
@@ -20,15 +20,15 @@ Response:
 }
 ```
 
-Protected APIs require headers:
+受保护接口需携带请求头：
 - `Authorization: Bearer <sessionToken>`
 - `X-User-Id: <userId>`
 
-If `WHITELIST_ENABLED=true`, only users in `WHITELIST_USERS` can call protected APIs, with per-user daily quota controlled by `WHITELIST_DAILY_QUOTA`.
+当 `WHITELIST_ENABLED=true` 时，只有 `WHITELIST_USERS` 中的用户可访问受保护接口，且受 `WHITELIST_DAILY_QUOTA` 的每日配额限制。
 
 ## POST /v1/samples/upload-url
 
-Request:
+请求示例：
 
 ```json
 {
@@ -37,14 +37,14 @@ Request:
 }
 ```
 
-This endpoint requires request signature headers:
+该接口要求请求签名头：
 - `X-Req-Ts`
 - `X-Req-Sig`
 
-For local MVP debugging, upload the image to the returned URL using multipart field `file`.
-The API service accepts it at `POST /v1/samples/upload/{sampleId}` and stores a temp copy under `/tmp/meowlator/uploads`.
+本地 MVP 调试时，可将图片用 multipart 字段 `file` 上传到返回的 URL。  
+API 会通过 `POST /v1/samples/upload/{sampleId}` 接收并临时落盘到 `/tmp/meowlator/uploads`。
 
-Response:
+响应示例：
 
 ```json
 {
@@ -58,7 +58,7 @@ Response:
 
 ## POST /v1/inference/finalize
 
-Request:
+请求示例：
 
 ```json
 {
@@ -87,8 +87,8 @@ Request:
 }
 ```
 
-Response includes final result, copy block, and feedback flag.
-When `edgeRuntime` is provided, `result.edgeMeta` will be returned:
+响应包含最终推理结果、文案区块和反馈标记。  
+当请求携带 `edgeRuntime` 时，响应中会返回 `result.edgeMeta`：
 
 ```json
 {
@@ -113,11 +113,11 @@ When `edgeRuntime` is provided, `result.edgeMeta` will be returned:
 }
 ```
 
-`failureCode` values currently used by mini-program:
-- `DEVICE_NOT_WHITELISTED`: device excluded by `edgeDeviceWhitelist`, direct cloud fallback.
-- `EDGE_RUNTIME_ERROR`: edge model load/infer failure.
+小程序当前使用的 `failureCode`：
+- `DEVICE_NOT_WHITELISTED`：设备不在 `edgeDeviceWhitelist`，直接走云端兜底。
+- `EDGE_RUNTIME_ERROR`：端侧模型加载/推理失败。
 
-When `PAIN_RISK_ENABLED=true`, response may include `result.risk`:
+当 `PAIN_RISK_ENABLED=true` 时，响应可能包含 `result.risk`：
 
 ```json
 {
@@ -134,23 +134,23 @@ When `PAIN_RISK_ENABLED=true`, response may include `result.risk`:
 
 ## POST /v1/feedback
 
-- `isCorrect=true` means confirmed label with weight 0.6.
-- `isCorrect=false` requires `trueLabel` with weight 1.0
+- `isCorrect=true` 表示确认模型结果，样本权重为 0.6。
+- `isCorrect=false` 必须提供 `trueLabel`，样本权重为 1.0。
 
 ## POST /v1/copy/generate
 
-Input only accepts structured inference JSON. Raw images are not supported.
+输入仅支持结构化推理 JSON，不支持原始图片。
 
 ## DELETE /v1/samples/{sampleId}
 
-Deletes sample and related feedback records.
-This endpoint requires request signature headers (`X-Req-Ts`, `X-Req-Sig`).
+删除样本及关联反馈记录。  
+该接口要求请求签名头（`X-Req-Ts`、`X-Req-Sig`）。
 
 ## GET /v1/metrics/client-config
 
-Returns thresholds, model version, AB config, whitelist and rollout metadata.
+返回阈值、模型版本、AB 配置、端侧白名单与灰度发布元数据。
 
-Response sample:
+响应示例：
 
 ```json
 {
@@ -179,12 +179,12 @@ Response sample:
 
 ## POST /v1/admin/models/register
 
-Registers candidate model metrics (internal endpoint, requires `X-Admin-Token`).
+注册候选模型指标（内部接口，需 `X-Admin-Token`）。
 
 ## POST /v1/admin/models/rollout
 
-Sets model to GRAY rollout (internal endpoint, requires `X-Admin-Token`).
+将模型设置为灰度状态（内部接口，需 `X-Admin-Token`）。
 
 ## POST /v1/admin/models/activate
 
-Activates target model and rolls back previous active/gray model (internal endpoint, requires `X-Admin-Token`).
+激活目标模型，并回滚前一个 ACTIVE/GRAY 模型（内部接口，需 `X-Admin-Token`）。

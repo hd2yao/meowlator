@@ -1,54 +1,54 @@
-# Meowlator White-list Release SOP (v1.0.0)
+# Meowlator 白名单发布 SOP（v1.0.0）
 
-## Preflight Checklist
+## 发布前检查
 
-1. `make test` passed on release commit.
-2. Database migrations are applied (`infra/migrations/001~003`).
-3. Candidate model is registered by `POST /v1/admin/models/register`.
-4. Gate report (`artifacts/pipeline/gate_report.json`) is `pass=true`.
-5. Environment variables are set:
+1. 发布提交上 `make test` 全通过。
+2. 数据库迁移已执行（`infra/migrations/001~003`）。
+3. 候选模型已通过 `POST /v1/admin/models/register` 注册。
+4. 门禁报告 `artifacts/pipeline/gate_report.json` 为 `pass=true`。
+5. 环境变量已配置：
    - `ADMIN_TOKEN`
    - `RATE_LIMIT_PER_USER_MIN`
    - `RATE_LIMIT_PER_IP_MIN`
    - `EDGE_DEVICE_WHITELIST`
    - `PAIN_RISK_ENABLED`
 
-## Gray Rollout Steps
+## 灰度发布步骤
 
-1. Set 10% gray:
+1. 先灰度 10%：
    - `POST /v1/admin/models/rollout`
-   - body: `{\"modelVersion\":\"<candidate>\",\"rolloutRatio\":0.1,\"targetBucket\":0}`
-2. Observe 24h:
-   - API error rate
-   - finalize p95 latency
-   - cloud fallback ratio
-   - LLM timeout ratio
-3. Increase to 30%, 60% with the same 24h observation window.
-4. Full activation:
+   - 请求体：`{"modelVersion":"<candidate>","rolloutRatio":0.1,"targetBucket":0}`
+2. 观察 24 小时：
+   - API 错误率
+   - `finalize` p95 延迟
+   - 云端兜底比例
+   - LLM 超时比例
+3. 按同样 24 小时观察窗口，逐步扩大到 30%、60%。
+4. 全量激活：
    - `POST /v1/admin/models/activate`
-   - body: `{\"modelVersion\":\"<candidate>\"}`
+   - 请求体：`{"modelVersion":"<candidate>"}`
 
-## Rollback Policy
+## 回滚策略
 
-Trigger rollback if any condition meets:
+满足任一条件即触发回滚：
 
-1. Error rate increases by 50%+ over baseline.
-2. p95 latency exceeds threshold by 20%+.
-3. User complaint volume spikes abnormally.
+1. 错误率较基线上升 50% 以上。
+2. p95 延迟超过阈值 20% 以上。
+3. 用户投诉量异常上升。
 
-Rollback steps:
+回滚步骤：
 
-1. Activate previous stable model via `POST /v1/admin/models/activate`.
-2. Temporarily tighten `cloudFallbackThreshold` in config.
-3. Keep evidence snapshots:
-   - model version
-   - rollout ratio
-   - anomaly window
-   - impact scope
+1. 通过 `POST /v1/admin/models/activate` 激活上一稳定版本。
+2. 临时收紧配置中的 `cloudFallbackThreshold`。
+3. 留存证据快照：
+   - 模型版本
+   - 灰度比例
+   - 异常时间窗
+   - 影响范围
 
-## 7-day White-list Observation Targets
+## 白名单发布后 7 天观察目标
 
-1. Share rate `>= 15%`.
-2. Valid feedback rate `>= 25%`.
-3. System error rate `< 1.5%`.
-4. Monthly budget forecast `<= 3000 RMB`.
+1. 分享率 `>= 15%`。
+2. 有效反馈率 `>= 25%`。
+3. 系统错误率 `< 1.5%`。
+4. 月成本预测 `<= 3000 RMB`。

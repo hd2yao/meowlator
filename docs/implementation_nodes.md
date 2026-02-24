@@ -1,18 +1,18 @@
-# Implementation Nodes
+# 实现节点记录
 
-This file records every functional implementation node in chronological order.
+该文件按时间顺序记录每个功能实现节点。
 
-| Node ID | Date | Version | Area | Functional Node | Verification | Commit |
+| 节点 ID | 日期 | 版本 | 模块 | 功能说明 | 验证方式 | 提交 |
 |---|---|---|---|---|---|---|
-| N001 | 2026-02-21 | 0.1.0 | Monorepo Bootstrap | Built MVP architecture: API, inference, mini program skeleton, training pipeline skeleton, infra, CI. | `make test` | `ac6d374` |
-| N002 | 2026-02-21 | 0.1.1 | Runtime Stability | Fixed Docker API image dependency copy and compose startup order for MySQL readiness. | `make up && docker compose -f infra/docker-compose.yml ps` | `ffaa1e8` |
-| N003 | 2026-02-21 | 0.2.0 | Training + Versioning | Added real dataset training script, real ONNX export, inference priors loading, and implementation node recorder. | `make test` + training/inference smoke checks | `TBD` |
-| N004 | 2026-02-22 | 0.3.0 | Edge Runtime Telemetry | Replaced mini program fixed mock call with `EdgeInferenceEngine`, added `edgeRuntime` request and `edgeMeta` response for finalize flow, and preserved cloud fallback on edge failure. | `cd services/api && go test ./...` + `cd apps/wechat-miniprogram && npm run typecheck` | `f2c13d8` |
-| N005 | 2026-02-22 | 0.4.0 | Data Pipeline Automation | Added feedback cleaning, weighted manifest builder, daily active-learning task generator, training resume support, and confusion matrix artifact output. | `cd ml/training && python3 -m unittest discover -s scripts -p 'test_*.py'` + `make test` | `1565346` |
-| N006 | 2026-02-22 | 0.5.0 | Pain Risk Reminder | Added optional pain-risk scoring branch, API risk output schema, disclaimer enforcement in copy generation, and mini-program risk card rendering (non-diagnostic). | `make test` | `3349df5` |
-| N007 | 2026-02-23 | 1.0.0 | Release Readiness | Added session auth, rate limit/signature guard, model rollout admin APIs, release migrations, cleanup task, and v0.6 training gate scripts for white-list launch readiness. | `make test` | `904400c` |
-| N008 | 2026-02-23 | 1.0.0 | White-list Quota Control | Added runtime whitelist gating and per-user daily quota control for protected APIs, with config and docs updates. | `make test` | `3196cff` |
-| N009 | 2026-02-23 | 1.0.0 | rollout-routing | Deterministic gray rollout user selection | make test | `7d346e9` |
-| N010 | 2026-02-23 | 1.0.0 | edge-rollout-client | Mini program consumes selectedModel and whitelist fallback | make test | `ab125f4` |
-| N011 | 2026-02-23 | 1.0.0 | docs-knowledge | Expanded project manual knowledge-point deep dive and coverage checklist | manual review + command references | `9993102` |
-| N012 | 2026-02-24 | 1.0.0 | docs-restructure | Rebuilt project manual with clean structure and consolidated knowledge sections | manual review + section keyword checks | `4d04a21` |
+| N001 | 2026-02-21 | 0.1.0 | Monorepo 初始化 | 完成 MVP 架构骨架：API、推理服务、小程序、训练流水线、基础设施、CI。 | `make test` | `ac6d374` |
+| N002 | 2026-02-21 | 0.1.1 | 运行稳定性 | 修复 API Docker 依赖复制问题，调整 compose 启动顺序确保 MySQL 就绪后启动 API。 | `make up && docker compose -f infra/docker-compose.yml ps` | `ffaa1e8` |
+| N003 | 2026-02-21 | 0.2.0 | 训练与版本化 | 新增真实数据集训练脚本、ONNX 导出、推理先验加载、实现节点记录工具。 | `make test` + 训练/推理烟雾检查 | `TBD` |
+| N004 | 2026-02-22 | 0.3.0 | 端侧运行时观测 | 用 `EdgeInferenceEngine` 替换固定 mock 调用；`finalize` 接入 `edgeRuntime` 入参和 `edgeMeta` 出参；保留端失败云兜底。 | `cd services/api && go test ./...` + `cd apps/wechat-miniprogram && npm run typecheck` | `f2c13d8` |
+| N005 | 2026-02-22 | 0.4.0 | 数据流水线自动化 | 新增反馈清洗、加权清单构建、每日主动学习任务、续训参数支持、混淆矩阵产物。 | `cd ml/training && python3 -m unittest discover -s scripts -p 'test_*.py'` + `make test` | `1565346` |
+| N006 | 2026-02-22 | 0.5.0 | 疑似不适提示 | 新增可选 pain-risk 分支、API 风险输出协议、文案免责声明强制注入、小程序风险卡片渲染（非诊断）。 | `make test` | `3349df5` |
+| N007 | 2026-02-23 | 1.0.0 | 发布就绪 | 新增会话鉴权、限流与签名防护、模型发布管理接口、发布迁移、清理任务、v0.6 训练门禁脚本。 | `make test` | `904400c` |
+| N008 | 2026-02-23 | 1.0.0 | 白名单配额 | 新增运行时白名单拦截与按用户每日配额控制，并更新配置与文档。 | `make test` | `3196cff` |
+| N009 | 2026-02-23 | 1.0.0 | 灰度路由 | 实现按用户稳定分桶的灰度选择逻辑（确定性路由）。 | `make test` | `7d346e9` |
+| N010 | 2026-02-23 | 1.0.0 | 客户端灰度接入 | 小程序消费 `selectedModel` 并接入白名单降级路径。 | `make test` | `ab125f4` |
+| N011 | 2026-02-23 | 1.0.0 | 文档知识点 | 扩展项目手册知识点深度说明与覆盖检查清单。 | 人工审阅 + 命令引用校对 | `9993102` |
+| N012 | 2026-02-24 | 1.0.0 | 文档重构 | 重建项目手册结构，合并重复信息并统一知识点章节。 | 人工审阅 + 章节关键字检查 | `4d04a21` |
