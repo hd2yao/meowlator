@@ -15,3 +15,4 @@ This file records every functional implementation node in chronological order.
 | N009 | 2026-02-23 | 1.0.0 | rollout-routing | Deterministic gray rollout user selection | make test | `7d346e9` |
 | N010 | 2026-02-23 | 1.0.0 | edge-rollout-client | Mini program consumes selectedModel and whitelist fallback | make test | `ab125f4` |
 | N011 | 2026-02-23 | 1.0.0 | docs-knowledge | Expanded project manual knowledge-point deep dive and coverage checklist | manual review + command references | `9993102` |
+| N012 | 2026-02-24 | 1.0.0 | docs-restructure | Rebuilt project manual with clean structure and consolidated knowledge sections | manual review + section keyword checks | `4d04a21` |
