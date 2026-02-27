@@ -1,8 +1,34 @@
-ALTER TABLE model_registry
-  ADD COLUMN IF NOT EXISTS target_bucket INT NOT NULL DEFAULT 0 AFTER rollout_ratio;
+SET @has_target_bucket := (
+  SELECT COUNT(*)
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'model_registry'
+    AND COLUMN_NAME = 'target_bucket'
+);
+SET @sql_target_bucket := IF(
+  @has_target_bucket = 0,
+  'ALTER TABLE model_registry ADD COLUMN target_bucket INT NOT NULL DEFAULT 0 AFTER rollout_ratio',
+  'SELECT 1'
+);
+PREPARE stmt_target_bucket FROM @sql_target_bucket;
+EXECUTE stmt_target_bucket;
+DEALLOCATE PREPARE stmt_target_bucket;
 
-ALTER TABLE samples
-  ADD INDEX idx_samples_model_created (model_version, created_at);
+SET @has_samples_model_created_idx := (
+  SELECT COUNT(*)
+  FROM information_schema.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'samples'
+    AND INDEX_NAME = 'idx_samples_model_created'
+);
+SET @sql_samples_model_created_idx := IF(
+  @has_samples_model_created_idx = 0,
+  'ALTER TABLE samples ADD INDEX idx_samples_model_created (model_version, created_at)',
+  'SELECT 1'
+);
+PREPARE stmt_samples_model_created_idx FROM @sql_samples_model_created_idx;
+EXECUTE stmt_samples_model_created_idx;
+DEALLOCATE PREPARE stmt_samples_model_created_idx;
 
 CREATE TABLE IF NOT EXISTS user_sessions (
   session_token VARCHAR(96) PRIMARY KEY,

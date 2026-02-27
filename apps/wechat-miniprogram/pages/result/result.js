@@ -49,6 +49,12 @@ Page({
     },
     onLoad() {
         var _a, _b, _c;
+        wx.showShareMenu({
+            withShareTicket: true,
+            fail: () => {
+                return;
+            },
+        });
         const app = getApp();
         const payload = app.globalData.lastResult;
         if (!payload) {
@@ -145,10 +151,6 @@ Page({
         finally {
             this.setData({ submittingFeedback: false });
         }
-    },
-    onShareTap() {
-        wx.showShareMenu({ withShareTicket: true });
-        wx.showToast({ title: "可直接右上角分享", icon: "none" });
     },
     onShareAppMessage() {
         return {

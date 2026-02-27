@@ -60,7 +60,7 @@
       <button class="feedback-btn feedback-bad" bindtap="onWrong" disabled="{{submittingFeedback}}">❌ 瞎说</button>
     </view>
 
-    <button class="share-btn" bindtap="onShareTap">一键分享</button>
+    <button class="share-btn" open-type="share">一键分享</button>
   </view>
 
   <view class="sheet-mask" wx:if="{{showFeedbackSheet}}" bindtap="onCloseFeedbackSheet">
