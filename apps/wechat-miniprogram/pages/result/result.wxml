@@ -60,7 +60,9 @@
       <button class="feedback-btn feedback-bad" bindtap="onWrong" disabled="{{submittingFeedback}}">❌ 瞎说</button>
     </view>
 
-    <button class="share-btn" open-type="share">一键分享</button>
+    <button class="share-btn" open-type="share" binderror="onShareError">一键分享</button>
+    <button class="share-btn share-copy-btn" bindtap="onCopyShareTitle">复制分享文案</button>
+    <view class="share-tip">未认证环境可先复制文案并截图转发</view>
   </view>
 
   <view class="sheet-mask" wx:if="{{showFeedbackSheet}}" bindtap="onCloseFeedbackSheet">

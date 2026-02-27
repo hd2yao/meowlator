@@ -152,6 +152,32 @@ Page({
             this.setData({ submittingFeedback: false });
         }
     },
+    onShareError() {
+        wx.showModal({
+            title: "暂不可用",
+            content: "当前小程序未完成认证，系统分享不可用。可先复制分享文案并截图转发。",
+            confirmText: "复制文案",
+            cancelText: "知道了",
+            success: (res) => {
+                if (!res.confirm) {
+                    return;
+                }
+                this.onCopyShareTitle();
+            },
+        });
+    },
+    onCopyShareTitle() {
+        const title = this.data.copy.shareTitle || "猫语翻译结果出炉";
+        wx.setClipboardData({
+            data: title,
+            success: () => {
+                wx.showToast({ title: "分享文案已复制", icon: "none" });
+            },
+            fail: () => {
+                wx.showToast({ title: "复制失败，请重试", icon: "none" });
+            },
+        });
+    },
     onShareAppMessage() {
         return {
             title: this.data.copy.shareTitle || "猫语翻译结果出炉",

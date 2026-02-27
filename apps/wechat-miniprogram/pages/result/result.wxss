@@ -314,6 +314,20 @@
   color: #ff8a4c;
 }
 
+.share-copy-btn {
+  margin-top: 12rpx;
+  background: #ffffff;
+  color: #6b7280;
+  border: 2rpx solid #d1d5db;
+}
+
+.share-tip {
+  margin-top: 10rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: #9ca3af;
+}
+
 .sheet-mask {
   position: fixed;
   inset: 0;
