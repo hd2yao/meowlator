@@ -8,6 +8,7 @@ interface GlobalData {
   sessionExpiresAt?: number;
   authPromise?: Promise<void>;
   lastResult?: FinalizeResponse;
+  lastImagePath?: string;
 }
 
 App<{ globalData: GlobalData }>({

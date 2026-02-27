@@ -1,14 +1,43 @@
-<view class="page">
-  <view class="card hero">
-    <view class="title">Meowlator</view>
-    <view class="subtitle">拍一张主子，翻译它此刻的意图。</view>
+<view class="home-page">
+  <view class="decor decor-top"></view>
+  <view class="decor decor-bottom"></view>
+
+  <view class="status-row">
+    <text class="status-time">9:41</text>
+    <view class="status-island"></view>
+    <view class="status-pet-eye">
+      <view class="eye-dot"></view>
+      <view class="eye-dot"></view>
+    </view>
   </view>
 
-  <button class="button-primary" bindtap="onSelectImage" loading="{{loading}}">
-    {{loading ? '识别中...' : '上传猫图开始翻译'}}
-  </button>
+  <view class="brand">Meowlator</view>
 
-  <view class="card" wx:if="{{message}}">
+  <view class="hero-wrap">
+    <text class="hero-title">读懂猫咪的</text>
+    <text class="hero-title hero-accent">每一个动作</text>
+    <text class="hero-sub">拍张照片，立刻解读主子的真实想法。</text>
+  </view>
+
+  <view class="upload-card">
+    <view class="cat-badge">🐱</view>
+    <text class="upload-title">准备好照片了吗？</text>
+    <text class="upload-sub">支持端侧极速推理</text>
+
+    <button class="cta cta-primary" bindtap="onTakePhoto" loading="{{loading}}" disabled="{{loading}}">
+      📸 立即拍照
+    </button>
+    <button class="cta cta-secondary" bindtap="onPickFromAlbum" disabled="{{loading}}">
+      🖼️ 从相册选择
+    </button>
+  </view>
+
+  <view class="error-card" wx:if="{{message}}">
     <text>{{message}}</text>
+  </view>
+
+  <view class="compliance">
+    <text>非医疗诊断，仅供娱乐参考</text>
+    <text>照片默认于 7 天后销毁，保护隐私</text>
   </view>
 </view>

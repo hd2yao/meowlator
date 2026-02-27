@@ -1,3 +1,4 @@
 {
-  "navigationBarTitleText": "喵语翻译官"
+  "navigationStyle": "custom",
+  "disableScroll": true
 }

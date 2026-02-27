@@ -1,36 +1,98 @@
-<view class="page" wx:if="{{result}}">
-  <view class="card">
-    <view class="section-title">猫猫台词</view>
-    <view class="cat-line">{{copy.catLine}}</view>
-  </view>
+<view class="result-page" wx:if="{{result}}">
+  <view class="hero-area">
+    <image class="hero-image" src="{{imagePath}}" mode="aspectFill" wx:if="{{imagePath}}"></image>
+    <view class="hero-fallback" wx:if="{{!imagePath}}">📷 猫咪照片</view>
 
-  <view class="card">
-    <view class="section-title">依据解释</view>
-    <view>{{copy.evidence}}</view>
-  </view>
+    <view class="status-row status-row-light">
+      <text class="status-time">9:41</text>
+      <view class="status-island"></view>
+      <view class="status-battery"></view>
+    </view>
 
-  <view class="card risk-card" wx:if="{{result.risk}}">
-    <view class="section-title">疑似不适风险</view>
-    <view>风险等级：{{riskLevelText}}（{{riskScoreText}}）</view>
-    <view wx:if="{{riskEvidenceText}}">风险依据：{{riskEvidenceText}}</view>
-    <view class="risk-disclaimer">{{riskDisclaimerText}}</view>
-  </view>
+    <view class="back-btn" bindtap="onBackTap">‹</view>
 
-  <view class="card">
-    <view class="section-title">意图 Top3</view>
-    <view wx:for="{{intentTop3Display}}" wx:key="label">
-      {{item.label}} - {{item.probPercent}}%
+    <view class="source-row">
+      <view class="source-badge">
+        <view class="source-dot"></view>
+        <text>{{sourceLabel}}</text>
+      </view>
+      <view class="source-time">{{sourceLatency}}</view>
     </view>
   </view>
 
-  <view class="feedback-row">
-    <button bindtap="onCorrect">准</button>
-    <button bindtap="onWrong">不准</button>
+  <view class="result-sheet">
+    <view class="sheet-grabber"></view>
+
+    <view class="summary-row">
+      <view class="summary-main">
+        <text class="intent-code">{{intentCode}}</text>
+        <text class="intent-headline">{{headline}}</text>
+      </view>
+      <view class="confidence-card">
+        <text class="confidence-value">{{confidenceText}}</text>
+        <text class="confidence-label">置信度</text>
+      </view>
+    </view>
+
+    <view class="copy-card">
+      <view class="copy-title">✨ Meowlator 翻译</view>
+      <view class="copy-line">{{copy.catLine}}</view>
+      <view class="copy-evidence" wx:if="{{copy.evidence}}">{{copy.evidence}}</view>
+    </view>
+
+    <view class="risk-card" wx:if="{{result.risk}}">
+      <view class="risk-title">疑似不适风险：{{riskLevelText}}（{{riskScoreText}}）</view>
+      <view class="risk-evidence" wx:if="{{riskEvidenceText}}">依据：{{riskEvidenceText}}</view>
+      <view class="risk-disclaimer">{{riskDisclaimerText}}</view>
+    </view>
+
+    <view class="top3-card">
+      <view class="top3-title">意图 Top3</view>
+      <view class="top3-item" wx:for="{{intentTop3Display}}" wx:key="label">
+        <text>{{item.label}}</text>
+        <text>{{item.probPercent}}%</text>
+      </view>
+    </view>
+
+    <view class="feedback-title">Meowlator 猜得准吗？</view>
+    <view class="feedback-row">
+      <button class="feedback-btn feedback-ok" bindtap="onCorrect" loading="{{submittingFeedback}}">✅ 超准</button>
+      <button class="feedback-btn feedback-bad" bindtap="onWrong" disabled="{{submittingFeedback}}">❌ 瞎说</button>
+    </view>
+
+    <button class="share-btn" bindtap="onShareTap">一键分享</button>
   </view>
 
-  <picker mode="selector" range="{{intentOptions}}" bindchange="onPickTrueLabel" wx:if="{{showLabelPicker}}">
-    <view class="picker">选择真实意图：{{pickedLabelText}}</view>
-  </picker>
+  <view class="sheet-mask" wx:if="{{showFeedbackSheet}}" bindtap="onCloseFeedbackSheet">
+    <view class="feedback-sheet" catchtap="noop">
+      <view class="sheet-grabber"></view>
+      <view class="sheet-header">
+        <text class="sheet-title">纠正意图</text>
+        <view class="sheet-close" bindtap="onCloseFeedbackSheet">✕</view>
+      </view>
 
-  <button class="button-primary" bindtap="onShareTap">生成分享</button>
+      <view class="sheet-tip">抱歉没有猜对主子的心思 😿</view>
+      <view class="sheet-tip">请告诉我们真实意图，帮助模型进阶！</view>
+
+      <view class="intent-grid">
+        <view
+          wx:for="{{feedbackOptions}}"
+          wx:key="value"
+          class="intent-item {{pickedLabel === item.value ? 'intent-item-active' : ''}}"
+          data-label="{{item.value}}"
+          bindtap="onPickGridLabel"
+        >
+          {{item.emoji}} {{item.label}}
+        </view>
+      </view>
+
+      <button class="submit-btn" bindtap="onSubmitWrongFeedback" loading="{{submittingFeedback}}">
+        提交反馈
+      </button>
+    </view>
+  </view>
+</view>
+
+<view class="empty-page" wx:else>
+  <text>暂无结果，请返回重新识别</text>
 </view>
