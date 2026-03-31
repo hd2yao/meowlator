@@ -1,4 +1,4 @@
-.PHONY: up down test test-go test-py test-mini run-api run-inference fmt train-vision train-vision-smoke train-vision-resume export-onnx clean-feedback-data build-training-manifest active-learning-daily build-eval-splits threshold-report evaluate-intent gate-model
+.PHONY: up down test test-go test-py test-mini smoke-local run-api run-inference fmt train-vision train-vision-smoke train-vision-resume export-onnx clean-feedback-data build-training-manifest active-learning-daily build-eval-splits threshold-report evaluate-intent gate-model
 
 RESUME_CHECKPOINT ?= ./artifacts/mobilenetv3-small-v2/mobilenetv3-small-v2.pt
 
@@ -19,6 +19,9 @@ test-py:
 
 test-mini:
 	cd apps/wechat-miniprogram && npm run typecheck
+
+smoke-local:
+	bash tools/smoke_local_flow.sh
 
 run-api:
 	cd services/api && go run ./cmd/api

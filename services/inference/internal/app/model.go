@@ -70,7 +70,7 @@ func NewModel(priors map[IntentLabel]float64) *Model {
 	return &Model{priors: normalizePriors(priors)}
 }
 
-func (m *Model) Predict(imageKey string, sceneTag string) InferenceResult {
+func (m *Model) Predict(imageKey string, sceneTag string) (InferenceResult, error) {
 	seed := hashValue(imageKey + "|" + sceneTag)
 	candidates := make([]IntentProb, 0, len(allIntents))
 	for idx, label := range allIntents {
@@ -97,7 +97,7 @@ func (m *Model) Predict(imageKey string, sceneTag string) InferenceResult {
 		Source:           "CLOUD",
 		Evidence:         evidence,
 		CopyStyleVersion: "v1",
-	}
+	}, nil
 }
 
 func (m *Model) intentPrior(label IntentLabel) float64 {
