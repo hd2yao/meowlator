@@ -1,5 +1,15 @@
 # Meowlator API v1 文档
 
+## 本地主链路冒烟
+
+可直接运行：
+
+```bash
+make smoke-local
+```
+
+该命令会顺序执行 `login -> upload-url -> upload -> finalize -> feedback -> delete`，用于快速验证本地 API 主链路是否可用。
+
 ## POST /v1/auth/wechat/login
 
 请求示例：
