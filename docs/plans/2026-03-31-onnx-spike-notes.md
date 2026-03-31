@@ -19,6 +19,9 @@
 5. 仓库内没有现成 `.onnx` 实物，只有模型注册元数据；因此 ONNX smoke 需要外部模型文件或先本地导出。
    - 代码位置：`ml/model-registry/*.json`
    - `find` 结果：仓库内无 `.onnx` 文件
+6. 当前 API 调 inference 只传 `imageKey`，不传图片字节或本地路径；而图片上传后只会落到 API 进程的本地目录。
+   - 代码位置：`services/api/internal/app/inference_client.go`
+   - 代码位置：`services/api/internal/api/handlers.go`
 
 ## Training Artifact Findings
 
@@ -62,6 +65,7 @@
 1. 需要 `cgo`。
 2. 需要随服务提供 ONNX Runtime 共享库。
 3. 需要模型文件真实存在于容器或本地文件系统。
+4. 需要 inference 服务能根据请求拿到真实图片文件，而不是只拿 `imageKey` 字符串。
 
 ## Deployment Decision
 
@@ -83,7 +87,7 @@
 2. 通过环境变量传入：
    - ONNX Runtime 共享库路径
    - ONNX 模型路径
-3. `docker-compose` 为 inference 服务增加模型和共享库的挂载约定。
+3. `docker-compose` 为 inference 服务增加模型、共享库、上传目录的挂载约定。
 
 ## Config Freeze
 
@@ -99,23 +103,39 @@
 4. `ONNX_INPUT_SIZE`
    - 默认 `224`
    - 用于前处理与模型导出尺寸对齐
+5. `INFERENCE_UPLOAD_ROOT`
+   - 默认 `/shared/uploads`
+   - 用于根据 `imageKey` 还原本地图片路径
 
 冻结策略：
 
 1. `heuristic` 模式继续保留，作为显式 feature flag。
 2. `onnx` 模式下禁止 silent fallback。
 3. 如果模型文件、共享库、session 初始化任一失败，服务启动直接 `log.Fatal`。
+4. `onnx` 模式下如果无法从 `imageKey` 解析出图片路径，或文件不存在，请求直接返回错误。
 
 ## External Contract Freeze
 
-`Task 5` 不改以下外部接口：
+`Task 5` 不改 HTTP 接口形状，但需要补齐图片可读性约定：
 
 1. `POST /v1/inference/predict`
 2. 请求体：`{"imageKey":"...","sceneTag":"..."}`
 3. 返回体：`{"result":{...}}`
-4. API 服务对 inference 的 HTTP client 协议保持不变。
+4. API 服务对 inference 的 HTTP client JSON 协议保持不变。
+5. `api` 与 `inference` 必须共享上传目录，并按同一 `sampleId.jpg` 规则访问本地文件。
 
-这样 ONNX 接入只影响 `services/inference/internal/app` 和启动配置，不波及 `services/api`。
+这样 ONNX 接入不改对外 JSON 协议，但会影响 `services/api` 与 `infra` 的目录共享约定。
+
+## Image Access Freeze
+
+`Task 5` 第一阶段采用“共享本地上传目录”策略，不引入对象存储 SDK，也不改成图片字节透传。
+
+冻结规则：
+
+1. API 继续把上传文件写到本地目录。
+2. `api` 与 `inference` 容器共享该目录。
+3. inference 端根据 `imageKey` 里的 `sampleId` 还原本地路径 `<INFERENCE_UPLOAD_ROOT>/<sampleId>.jpg`。
+4. 文件不存在时，`onnx` predictor 返回明确错误，不回退到 heuristic。
 
 ## Output Mapping Freeze
 
@@ -164,6 +184,7 @@ cd services/inference
 INFERENCE_PREDICTOR=onnx \
 ONNX_MODEL_PATH=/absolute/path/to/model.onnx \
 ONNX_SHARED_LIBRARY_PATH=/absolute/path/to/libonnxruntime.so \
+INFERENCE_UPLOAD_ROOT=/shared/uploads \
 go run ./cmd/inference
 ```
 
@@ -178,8 +199,9 @@ curl -X POST http://127.0.0.1:8081/v1/inference/predict \
 预期：
 
 1. 服务能成功启动并输出 ONNX session 初始化日志。
-2. 预测接口返回有效 `result`。
+2. 请求命中的图片文件存在时，预测接口返回有效 `result`。
 3. 如果 `ONNX_MODEL_PATH` 或 `ONNX_SHARED_LIBRARY_PATH` 错误，服务在启动阶段明确失败。
+4. 如果图片文件不存在，请求阶段明确失败。
 
 ## Task 5 Implementation Boundary
 
@@ -188,11 +210,13 @@ curl -X POST http://127.0.0.1:8081/v1/inference/predict \
 1. 抽出 `Predictor` 接口，拆分 `heuristic` 与 `onnx` 两个实现。
 2. `main.go` 按 `INFERENCE_PREDICTOR` 选择 predictor，并在 `onnx` 模式下 fail-fast。
 3. `onnx` predictor 真实加载 `.onnx`，不允许伪接入。
-4. 单测至少覆盖：
+4. 为 inference 增加图片路径解析/读取层，并补共享目录配置。
+5. 单测至少覆盖：
    - `onnx` 模式缺模型/缺库时报错
+   - 图片路径不存在时报错
    - predictor 能返回有效 `InferenceResult`
    - `heuristic` 模式仍可工作
-5. 暂不在本任务内做 GPU、批量推理、多模型热切换。
+6. 暂不在本任务内做 GPU、批量推理、多模型热切换、对象存储取图。
 
 ## Decision Summary
 
@@ -200,4 +224,4 @@ curl -X POST http://127.0.0.1:8081/v1/inference/predict \
 2. 运行时选型为 `onnxruntime_go + official onnxruntime shared library`。
 3. 配置策略为显式 `heuristic|onnx` 切换。
 4. 错误策略为 `onnx` 模式启动即 fail-fast，不做 silent fallback。
-5. 容器策略应从 `alpine` 转到更适合共享库部署的 glibc 基线。
+5. 容器策略应从 `alpine` 转到更适合共享库部署的 glibc 基线，并共享上传目录。
