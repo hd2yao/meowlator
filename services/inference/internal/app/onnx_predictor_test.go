@@ -41,7 +41,7 @@ func TestResolveImagePathRejectsInvalidImageKey(t *testing.T) {
 }
 
 func TestNormalizeChannelUsesImageNetStats(t *testing.T) {
-	got := normalizeChannel(124 << 8)
+	got := normalizeChannel(124<<8, 0.485, 0.229)
 	want := float32((124.0/255.0 - 0.485) / 0.229)
 	if diff := got - want; diff < -0.0001 || diff > 0.0001 {
 		t.Fatalf("expected imagenet normalization %.6f, got %.6f", want, got)

@@ -149,17 +149,17 @@ func loadImageTensor(imagePath string, size int) ([]float32, error) {
 		for x := 0; x < size; x++ {
 			r, g, b, _ := dst.At(x, y).RGBA()
 			idx := y*size + x
-			data[idx] = normalizeChannel(r)
-			data[pixels+idx] = normalizeChannel(g)
-			data[(2*pixels)+idx] = normalizeChannel(b)
+			data[idx] = normalizeChannel(r, 0.485, 0.229)
+			data[pixels+idx] = normalizeChannel(g, 0.456, 0.224)
+			data[(2*pixels)+idx] = normalizeChannel(b, 0.406, 0.225)
 		}
 	}
 	return data, nil
 }
 
-func normalizeChannel(v uint32) float32 {
+func normalizeChannel(v uint32, mean float32, std float32) float32 {
 	value := float32(v>>8) / 255.0
-	return (value - 0.5) / 0.5
+	return (value - mean) / std
 }
 
 func (p *ONNXPredictor) buildResult(imageKey string, sceneTag string, logits []float32) (InferenceResult, error) {
