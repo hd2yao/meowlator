@@ -1,196 +1,203 @@
 # 2026-03-31 ONNX Integration Spike Notes
 
-## 结论
+## Goal
 
-1. Go 侧运行时选型冻结为 `github.com/yalue/onnxruntime_go`，先做 CPU 推理，不引入 GPU provider。
-2. `ONNX` 模式必须是显式配置模式，不做静默回退。`ONNX` 所需动态库或模型文件缺失时，推理服务启动即失败。
-3. 当前 `services/inference` 的容器基线不适合直接承载 `ONNX` 运行时。`Task 5` 需要把推理服务镜像从 `alpine` 切到 `debian:bookworm-slim` 或等价 `glibc` 基线。
-4. 当前仓库没有可直接加载的 `.onnx` 实物，只有导出脚本和模型注册元数据。`Task 5` 必须把模型文件挂载/复制到服务可读路径，不能假设仓库内自带产物。
+把 `services/inference` 从“启发式假推理”推进到“可显式切换的 ONNX 真推理”，并冻结实现边界，避免 `Task 5` 再回头改协议和部署方式。
 
-## 现状证据
+## Current State
 
-### 1. 当前云推理仍是启发式，不是真推理
+1. 云推理 HTTP 协议已经稳定，只暴露 `POST /v1/inference/predict`，请求体为 `imageKey + sceneTag`，返回 `result`。
+   - 代码位置：`services/inference/internal/api/handlers.go`
+2. 当前 `services/inference/internal/app/model.go` 仍是哈希 + 先验融合的启发式实现，不加载 `.onnx`，也不做图像前处理。
+3. 配置面当前只有：
+   - `INFERENCE_ADDR`
+   - `MODEL_PRIORS_PATH`
+   - 代码位置：`services/inference/internal/config/config.go`
+4. 当前容器镜像是 `alpine` 两阶段构建，不包含 ONNX Runtime 共享库，也没有模型挂载约定。
+   - 代码位置：`services/inference/Dockerfile`
+   - 代码位置：`infra/docker-compose.yml`
+5. 仓库内没有现成 `.onnx` 实物，只有模型注册元数据；因此 ONNX smoke 需要外部模型文件或先本地导出。
+   - 代码位置：`ml/model-registry/*.json`
+   - `find` 结果：仓库内无 `.onnx` 文件
 
-- 当前云推理入口直接依赖 `app.Model`，`POST /v1/inference/predict` 只调用 `model.Predict(...)`。
-  - [services/inference/internal/api/handlers.go](/Users/dysania/.config/superpowers/worktrees/meowlator/codex-mvp-gap-closure-plan/services/inference/internal/api/handlers.go:10)
-- 当前 `Model` 的输出来自 `imageKey|sceneTag` 哈希、固定意图集合、先验混合和规则派生状态，不读取图片，也不加载模型文件。
-  - [services/inference/internal/app/model.go](/Users/dysania/.config/superpowers/worktrees/meowlator/codex-mvp-gap-closure-plan/services/inference/internal/app/model.go:65)
+## Training Artifact Findings
 
-### 2. ONNX 导出物的真实形态
+1. `ml/training/scripts/export_onnx.py` 已支持从 `MobileNetV3 Small` checkpoint 导出 ONNX，并可选做动态 INT8 量化。
+2. 导出脚本固定：
+   - 输入名：`input`
+   - 输出名：`logits`
+   - 输入张量：`1 x 3 x input_size x input_size`
+   - 默认 `input_size` 来自 checkpoint，缺省为 `224`
+3. 业务侧还原逻辑需要从 logits 推导：
+   - `intentTop3`
+   - `confidence`
+   - `state`
+   - `evidence`
+   - `copyStyleVersion`
+4. 当前训练依赖已经声明并且本机 Python 环境可见：
+   - `torch`
+   - `onnx`
+   - `onnxruntime`
+   - 代码位置：`ml/training/requirements.txt`
 
-- 训练导出脚本把 `MobileNetV3 Small` 的分类头替换为 `num_classes=8` 的线性层。
-  - [ml/training/scripts/export_onnx.py](/Users/dysania/.config/superpowers/worktrees/meowlator/codex-mvp-gap-closure-plan/ml/training/scripts/export_onnx.py:12)
-- 导出输入名固定为 `input`，输出名固定为 `logits`，默认 `opset=17`。
-  - [ml/training/scripts/export_onnx.py](/Users/dysania/.config/superpowers/worktrees/meowlator/codex-mvp-gap-closure-plan/ml/training/scripts/export_onnx.py:54)
-- 输入张量形状是 `[batch, 3, input_size, input_size]`。当前 checkpoint 默认 `input_size=224`。
-  - [ml/training/scripts/export_onnx.py](/Users/dysania/.config/superpowers/worktrees/meowlator/codex-mvp-gap-closure-plan/ml/training/scripts/export_onnx.py:28)
-- 输出只有单个 `logits` 头，没有 `state` 头、没有 `copy` 头。
-  - [ml/training/scripts/export_onnx.py](/Users/dysania/.config/superpowers/worktrees/meowlator/codex-mvp-gap-closure-plan/ml/training/scripts/export_onnx.py:58)
+## Runtime Decision
 
-### 3. 仓库里的模型资产状态
-
-- 模型注册目录只有元数据，没有 `.onnx` 实物。
-  - [ml/model-registry/mobilenetv3-small-int8-v1.json](/Users/dysania/.config/superpowers/worktrees/meowlator/codex-mvp-gap-closure-plan/ml/model-registry/mobilenetv3-small-int8-v1.json:1)
-  - [ml/model-registry/mobilenetv3-small-int8-v2.json](/Users/dysania/.config/superpowers/worktrees/meowlator/codex-mvp-gap-closure-plan/ml/model-registry/mobilenetv3-small-int8-v2.json:1)
-- 注册表只记录 `artifact_uri`，例如 `s3://...onnx`，说明服务集成时必须解决模型下发或挂载问题。
-  - [ml/model-registry/mobilenetv3-small-int8-v1.json](/Users/dysania/.config/superpowers/worktrees/meowlator/codex-mvp-gap-closure-plan/ml/model-registry/mobilenetv3-small-int8-v1.json:4)
-- `Makefile` 已有导出命令，但产物默认落在本地训练目录，不会自动进入 `services/inference`。
-  - [Makefile](/Users/dysania/.config/superpowers/worktrees/meowlator/codex-mvp-gap-closure-plan/Makefile:62)
-
-## 运行时方案冻结
-
-### 1. Go 运行时
+### Selected Go Runtime
 
 选型：`github.com/yalue/onnxruntime_go`
 
+理由：
+
+1. 它是对 Microsoft ONNX Runtime C API 的 Go 包装，适合当前 Go 推理服务直接加载 `.onnx`。
+2. 它要求显式设置 ONNX Runtime 共享库路径，便于我们把“缺库/缺模型时启动失败”做成 fail-fast。
+3. 它支持直接创建 session 和张量，足够覆盖 MVP 的单输入单输出 CPU 推理路径。
+
+参考来源：
+
+1. `yalue/onnxruntime_go` README：<https://github.com/yalue/onnxruntime_go>
+2. ONNX Runtime C API 文档：<https://onnxruntime.ai/docs/get-started/with-c.html>
+
+### Hard Requirements
+
+1. 需要 `cgo`。
+2. 需要随服务提供 ONNX Runtime 共享库。
+3. 需要模型文件真实存在于容器或本地文件系统。
+
+## Deployment Decision
+
+### Container Baseline
+
+结论：`Task 5` 不应继续使用当前 `alpine` 运行时镜像。
+
 原因：
 
-1. 当前项目是 Go 服务，不引入 Python sidecar，优先选择 Go 原生调用链。
-2. 该库直接包装官方 ONNX Runtime C API，适合本项目“服务启动时加载模型，进程内复用 session”的模式。
-3. 该库要求显式指定 ONNX Runtime 共享库路径，并在初始化前完成环境准备，符合本项目对 fail-fast 的要求。
+1. 选定的 Go wrapper 依赖 ONNX Runtime 共享库。
+2. 当前镜像没有任何共享库拷贝或挂载策略。
+3. 基于 wrapper README 和官方 release 的典型分发方式，Linux 侧通常直接消费官方共享库；在这种路径下，继续用 `alpine/musl` 风险高，容器内库兼容性不可控。
 
-外部依据：
+这里的 `alpine` 风险判断是基于官方文档和 wrapper 的部署要求做出的工程推断，不是当前仓库内已跑通的事实。
 
-1. `onnxruntime_go` README 明确要求 `cgo` 和可用的 ONNX Runtime shared library，并建议显式设置 shared library path。
-   - [yalue/onnxruntime_go README](https://github.com/yalue/onnxruntime_go)
-2. ONNX Runtime 官方安装文档明确区分语言绑定与底层运行时库，Linux 下需要提供动态库和依赖环境。
-   - [Install ONNX Runtime](https://onnxruntime.ai/docs/install/)
+冻结决策：
 
-### 2. 容器与系统前提
+1. `services/inference/Dockerfile` 切到 `debian:bookworm-slim` 或同类 glibc 基线。
+2. 通过环境变量传入：
+   - ONNX Runtime 共享库路径
+   - ONNX 模型路径
+3. `docker-compose` 为 inference 服务增加模型和共享库的挂载约定。
 
-冻结要求：
+## Config Freeze
 
-1. `Task 5` 的推理服务构建必须开启 `cgo`。
-2. 推理服务运行镜像切到 `glibc` 基线，避免继续使用当前 `alpine`/`musl` 路线。
-3. 容器内必须提供：
-   - ONNX Runtime shared library
-   - 目标 `.onnx` 模型文件
-   - 可选的 `intent_priors.json`
+`Task 5` 统一新增以下配置字段：
 
-当前需要调整的地方：
+1. `INFERENCE_PREDICTOR`
+   - 可选值：`heuristic`、`onnx`
+   - 默认：`heuristic`
+2. `ONNX_MODEL_PATH`
+   - 当 `INFERENCE_PREDICTOR=onnx` 时必填
+3. `ONNX_SHARED_LIBRARY_PATH`
+   - 当 `INFERENCE_PREDICTOR=onnx` 时必填
+4. `ONNX_INPUT_SIZE`
+   - 默认 `224`
+   - 用于前处理与模型导出尺寸对齐
 
-1. 当前推理服务 Dockerfile 采用 `golang:1.22-alpine` -> `alpine:3.20` 双阶段构建，不适合作为 ONNX runtime 基线。
-   - [services/inference/Dockerfile](/Users/dysania/.config/superpowers/worktrees/meowlator/codex-mvp-gap-closure-plan/services/inference/Dockerfile:1)
-2. 当前 compose 只传了 `MODEL_PRIORS_PATH`，还没有模型路径或 runtime 动态库路径配置。
-   - [infra/docker-compose.yml](/Users/dysania/.config/superpowers/worktrees/meowlator/codex-mvp-gap-closure-plan/infra/docker-compose.yml:19)
+冻结策略：
 
-### 3. 配置字段冻结
+1. `heuristic` 模式继续保留，作为显式 feature flag。
+2. `onnx` 模式下禁止 silent fallback。
+3. 如果模型文件、共享库、session 初始化任一失败，服务启动直接 `log.Fatal`。
 
-`Task 5` 采用以下配置边界：
+## External Contract Freeze
 
-1. `INFERENCE_PREDICTOR_MODE=heuristic|onnx`
-2. `ONNX_MODEL_PATH=/app/models/<model>.onnx`
-3. `ONNXRUNTIME_SHARED_LIBRARY_PATH=/app/lib/libonnxruntime.so`
-4. `MODEL_PRIORS_PATH` 保持现有语义，作为可选后处理输入
+`Task 5` 不改以下外部接口：
 
-行为冻结：
+1. `POST /v1/inference/predict`
+2. 请求体：`{"imageKey":"...","sceneTag":"..."}`
+3. 返回体：`{"result":{...}}`
+4. API 服务对 inference 的 HTTP client 协议保持不变。
 
-1. `heuristic` 模式：允许没有 ONNX 运行时和模型文件。
-2. `onnx` 模式：若共享库、模型文件、session 初始化任一失败，服务直接返回启动错误并退出。
-3. `onnx` 模式下不做“默默退回 heuristic”。需要切回启发式时，只能显式改配置。
+这样 ONNX 接入只影响 `services/inference/internal/app` 和启动配置，不波及 `services/api`。
 
-## 输出映射冻结
+## Output Mapping Freeze
 
-当前导出的 ONNX 模型只给出 8 类意图 `logits`，因此服务在 ONNX 模式下仍需补齐业务输出：
+当前导出的 ONNX 模型只有单个 `logits` 输出，因此 `Task 5` 需要在服务内做最小后处理，还原现有业务结构。
+
+冻结规则：
 
 1. `intentTop3`
-   - 对 `logits` 做 softmax，取 top-3，映射到当前 8 个 `IntentLabel`
-   - 标签集合沿用当前服务定义
-   - [services/inference/internal/app/model.go](/Users/dysania/.config/superpowers/worktrees/meowlator/codex-mvp-gap-closure-plan/services/inference/internal/app/model.go:11)
+   - 对 `logits` 做 softmax
+   - 取 top-3
+   - 标签集合沿用当前 `services/inference/internal/app/model.go` 中的 8 个 `IntentLabel`
 2. `confidence`
-   - 取 top-1 softmax 概率
+   - 使用 top-1 softmax 概率
 3. `state`
-   - 现有训练导出没有三轴状态头
-   - 第一阶段保持兼容做法：仍由服务端基于 top intent 或概率分布做确定性派生，不在 `Task 5` 扩训模型结构
+   - 第一阶段不扩展多头模型
+   - 继续由服务端做确定性派生，输入只使用 top intent 和 confidence bucket
 4. `source`
    - 固定 `"CLOUD"`
 5. `evidence`
-   - 第一阶段保留规则文案，标识 `"云端 ONNX 复判"` 与 `"视觉 logits 排序"`
+   - 第一阶段保留规则文案，至少包含 `"云端 ONNX 复判"` 和 `"视觉 logits 排序"`
 6. `copyStyleVersion`
-   - 继续固定 `"v1"`
+   - 固定 `"v1"`
 
-这意味着 `Task 5` 的目标是“云侧真视觉分类接入”，不是一次性把 `state` 也升级成多头神经网络。
+这意味着 `Task 5` 的目标是先把“云侧真视觉分类”接进来，不在这一轮扩成多头状态网络。
 
-## 最小 smoke 方案
+## Minimal Smoke Path
 
-### 1. Python 级模型 smoke
+### Step 1: 产出或准备模型
 
-仓库现有 `ml/training/requirements.txt` 已包含 `onnx` 和 `onnxruntime`，足以做最小验证。
-
-建议命令：
+如果已有 checkpoint，可先导出：
 
 ```bash
 cd ml/training
 python3 scripts/export_onnx.py \
-  --checkpoint ./artifacts/mobilenetv3-small-v2/mobilenetv3-small-v2.pt \
-  --output ./artifacts/mobilenetv3-small-v2/mobilenetv3-small-v2.onnx \
+  --checkpoint ./artifacts/<run>/<model>.pt \
+  --output ./artifacts/<run>/<model>.onnx \
   --quantize-int8
-
-python3 - <<'PY'
-import numpy as np
-import onnxruntime as ort
-
-session = ort.InferenceSession("./artifacts/mobilenetv3-small-v2/mobilenetv3-small-v2.onnx")
-output = session.run(["logits"], {"input": np.zeros((1, 3, 224, 224), dtype=np.float32)})[0]
-print(output.shape)
-PY
 ```
 
-预期：
+如果没有 checkpoint，则需要先提供一个现成 `.onnx` 文件；当前仓库本身不包含该文件。
 
-1. 导出成功
-2. `InferenceSession` 可加载模型
-3. 输出 shape 为 `(1, 8)`
-
-### 2. Go 服务级 smoke
-
-`Task 5` 完成后最小启动命令冻结为：
+### Step 2: 启动 inference 服务
 
 ```bash
 cd services/inference
-INFERENCE_PREDICTOR_MODE=onnx \
+INFERENCE_PREDICTOR=onnx \
 ONNX_MODEL_PATH=/absolute/path/to/model.onnx \
-ONNXRUNTIME_SHARED_LIBRARY_PATH=/absolute/path/to/libonnxruntime.so \
+ONNX_SHARED_LIBRARY_PATH=/absolute/path/to/libonnxruntime.so \
 go run ./cmd/inference
 ```
 
-最小接口验证：
+### Step 3: 调用最小预测接口
 
 ```bash
-curl -s http://127.0.0.1:8081/v1/inference/predict \
+curl -X POST http://127.0.0.1:8081/v1/inference/predict \
   -H 'Content-Type: application/json' \
-  -d '{"imageKey":"samples/u1/s1.jpg","sceneTag":"UNKNOWN"}'
+  -d '{"imageKey":"samples/cat-001/sample-123.jpg","sceneTag":"UNKNOWN"}'
 ```
 
 预期：
 
-1. 服务启动日志出现 ONNX session 初始化成功信息
-2. 缺模型或缺动态库时，进程启动失败
-3. 同一输入在不同模型版本下可以产生不同 top-3
+1. 服务能成功启动并输出 ONNX session 初始化日志。
+2. 预测接口返回有效 `result`。
+3. 如果 `ONNX_MODEL_PATH` 或 `ONNX_SHARED_LIBRARY_PATH` 错误，服务在启动阶段明确失败。
 
-## Task 5 实现边界
+## Task 5 Implementation Boundary
 
-需要新增/拆分：
+`Task 5` 的最小实现范围冻结如下：
 
-1. `services/inference/internal/app/predictor.go`
-2. `services/inference/internal/app/heuristic_predictor.go`
-3. `services/inference/internal/app/onnx_predictor.go`
-4. `services/inference/internal/app/onnx_predictor_test.go`
-5. `services/inference/internal/config/config.go`
-6. `services/inference/cmd/inference/main.go`
+1. 抽出 `Predictor` 接口，拆分 `heuristic` 与 `onnx` 两个实现。
+2. `main.go` 按 `INFERENCE_PREDICTOR` 选择 predictor，并在 `onnx` 模式下 fail-fast。
+3. `onnx` predictor 真实加载 `.onnx`，不允许伪接入。
+4. 单测至少覆盖：
+   - `onnx` 模式缺模型/缺库时报错
+   - predictor 能返回有效 `InferenceResult`
+   - `heuristic` 模式仍可工作
+5. 暂不在本任务内做 GPU、批量推理、多模型热切换。
 
-不在 `Task 5` 范围内的内容：
+## Decision Summary
 
-1. 自动下载模型
-2. GPU provider
-3. 多头状态网络
-4. 在线热更新模型
-
-## 验收口径
-
-只有同时满足以下条件，才算 ONNX 真推理接入完成：
-
-1. 代码路径真实创建 ONNX Runtime session 并执行张量推理
-2. `onnx` 模式下模型文件不可用时服务失败
-3. `heuristic` 模式仍可独立运行
-4. `go test ./...` 覆盖 ONNX 加载失败与成功路径
+1. 方案已冻结，可以直接进入 `Task 5`。
+2. 运行时选型为 `onnxruntime_go + official onnxruntime shared library`。
+3. 配置策略为显式 `heuristic|onnx` 切换。
+4. 错误策略为 `onnx` 模式启动即 fail-fast，不做 silent fallback。
+5. 容器策略应从 `alpine` 转到更适合共享库部署的 glibc 基线。
