@@ -15,13 +15,15 @@ import (
 )
 
 type CopyClientConfig struct {
-	Timeout time.Duration
+	Timeout  time.Duration
+	Observer CopyObserver
 }
 
 type CopyHTTPClient struct {
 	endpoint string
 	enabled  bool
 	client   *http.Client
+	observer CopyObserver
 }
 
 func NewCopyClient(cfg CopyClientConfig) *CopyHTTPClient {
@@ -36,6 +38,7 @@ func NewCopyClient(cfg CopyClientConfig) *CopyHTTPClient {
 		client: &http.Client{
 			Timeout: cfg.Timeout,
 		},
+		observer: cfg.Observer,
 	}
 }
 
@@ -55,6 +58,9 @@ func (c *CopyHTTPClient) Generate(ctx context.Context, result domain.InferenceRe
 		block, err := c.generateFromLLM(ctx, result, styleVersion)
 		if err == nil {
 			return enforceRiskDisclaimer(block, result), nil
+		}
+		if c.observer != nil {
+			c.observer.ObserveCopyFailure(isCopyTimeout(err))
 		}
 	}
 	return enforceRiskDisclaimer(generateTemplateCopy(result), result), nil

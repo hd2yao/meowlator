@@ -23,6 +23,53 @@
 4. `cloud_fallback_ratio` — 目标 < 30%
 5. `llm_timeout_ratio`
 
+## 当前已落地的最小观测出口
+
+当前版本没有接 Prometheus/Grafana 栈，先在 API 服务内提供轻量级 `/metrics` 文本端点，用于本地联调、灰度观察和后续对接抓取。
+
+### 端点
+
+1. `GET /metrics`
+2. 返回类型：`text/plain`
+3. 当前不做鉴权，默认面向内网/本地环境使用
+
+### 已实现指标名
+
+1. `api_requests_total`
+   - API 已处理请求总数
+2. `api_errors_total`
+   - API 返回 `4xx/5xx` 的请求数
+3. `finalize_requests_total`
+   - `POST /v1/inference/finalize` 总次数
+4. `finalize_errors_total`
+   - `finalize` 失败次数
+5. `finalize_fallback_total`
+   - `finalize` 结果中 `fallbackUsed=true` 的次数
+6. `finalize_duration_ms_count`
+7. `finalize_duration_ms_sum`
+8. `finalize_duration_ms_bucket{le="50|100|250|500|1000|2500|5000"}`
+   - 用于计算 `finalize_p95_ms`
+9. `copy_requests_total`
+   - copy 生成总请求数，包含缓存命中
+10. `copy_failures_total`
+   - copy 上游生成失败次数
+11. `copy_timeouts_total`
+   - copy 上游生成超时次数
+
+### 指标解释
+
+1. `api_error_rate = api_errors_total / api_requests_total`
+2. `cloud_fallback_ratio = finalize_fallback_total / finalize_requests_total`
+3. `llm_timeout_ratio = copy_timeouts_total / copy_requests_total`
+4. `finalize_p95_ms`
+   - 当前通过 `finalize_duration_ms_bucket` 近似计算，不在服务内直接输出 p95
+
+### 现阶段限制
+
+1. 指标为进程内内存累计值，服务重启后会清零
+2. 还没有多实例聚合
+3. 还没有告警推送，只提供观测出口
+
 ## 成本指标
 
 1. `api_compute_cost_rmb`
