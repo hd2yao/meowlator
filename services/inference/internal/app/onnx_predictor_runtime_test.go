@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/base64"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -10,6 +11,8 @@ import (
 	"strings"
 	"testing"
 )
+
+const constantLogitsONNXBase64 = "CA06mQEKTxIGbG9naXRzIghDb25zdGFudCo7CgV2YWx1ZSovCAEICBABIiDNzMw9zcxMPpqZmT7NzMw+AAAAP5qZGT8zMzM/zcxMP0IFdmFsdWWgAQQSC2NvbnN0LW1vZGVsWh8KBWlucHV0EhYKFAgBEhAKAggBCgIIAwoCCAQKAggEYhgKBmxvZ2l0cxIOCgwIARIICgIIAQoCCAhCBAoAEBE="
 
 func TestONNXPredictorRunsRealSession(t *testing.T) {
 	predictor, err := NewPredictor(PredictorConfig{
@@ -59,21 +62,13 @@ func testSharedLibPath(t *testing.T) string {
 func writeConstantONNXModel(t *testing.T) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "const.onnx")
-	script := `
-import sys
-import onnx
-from onnx import helper, TensorProto
-
-path = sys.argv[1]
-x = helper.make_tensor_value_info("input", TensorProto.FLOAT, [1, 3, 4, 4])
-y = helper.make_tensor_value_info("logits", TensorProto.FLOAT, [1, 8])
-const = helper.make_tensor("value", TensorProto.FLOAT, [1, 8], [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8])
-node = helper.make_node("Constant", inputs=[], outputs=["logits"], value=const)
-graph = helper.make_graph([node], "const-model", [x], [y])
-model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 17)])
-onnx.save(model, path)
-`
-	runCmd(t, "python3", "-c", script, path)
+	raw, err := base64.StdEncoding.DecodeString(constantLogitsONNXBase64)
+	if err != nil {
+		t.Fatalf("decode embedded onnx fixture failed: %v", err)
+	}
+	if err := os.WriteFile(path, raw, 0o644); err != nil {
+		t.Fatalf("write embedded onnx fixture failed: %v", err)
+	}
 	return path
 }
 
