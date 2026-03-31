@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -47,15 +48,19 @@ func testSharedLibPath(t *testing.T) string {
 		return path
 	}
 	moduleDir := strings.TrimSpace(runCmd(t, "go", "list", "-f", "{{.Dir}}", "-m", "github.com/yalue/onnxruntime_go"))
-	for _, candidate := range []string{
-		filepath.Join(moduleDir, "test_data", "onnxruntime_arm64.dylib"),
-		filepath.Join(moduleDir, "test_data", "onnxruntime_arm64.so"),
-	} {
+	var candidates []string
+	switch runtime.GOOS + "/" + runtime.GOARCH {
+	case "darwin/arm64":
+		candidates = []string{filepath.Join(moduleDir, "test_data", "onnxruntime_arm64.dylib")}
+	case "linux/arm64":
+		candidates = []string{filepath.Join(moduleDir, "test_data", "onnxruntime_arm64.so")}
+	}
+	for _, candidate := range candidates {
 		if _, err := os.Stat(candidate); err == nil {
 			return candidate
 		}
 	}
-	t.Fatalf("failed to find onnxruntime shared library test fixture under %s/test_data", moduleDir)
+	t.Skipf("no onnxruntime shared library fixture for %s/%s", runtime.GOOS, runtime.GOARCH)
 	return ""
 }
 
