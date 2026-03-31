@@ -10,8 +10,14 @@ import (
 
 func TestPredictDeterministic(t *testing.T) {
 	m := NewModel(nil)
-	one := m.Predict("samples/u1/s1.jpg", "FOOD_BOWL")
-	two := m.Predict("samples/u1/s1.jpg", "FOOD_BOWL")
+	one, err := m.Predict("samples/u1/s1.jpg", "FOOD_BOWL")
+	if err != nil {
+		t.Fatalf("predict one failed: %v", err)
+	}
+	two, err := m.Predict("samples/u1/s1.jpg", "FOOD_BOWL")
+	if err != nil {
+		t.Fatalf("predict two failed: %v", err)
+	}
 	if one.IntentTop3[0].Label != two.IntentTop3[0].Label || one.Confidence != two.Confidence {
 		t.Fatalf("expected deterministic result")
 	}
@@ -49,7 +55,10 @@ func TestLoadIntentPriors(t *testing.T) {
 
 func TestPredictWithPriorsAddsEvidence(t *testing.T) {
 	m := NewModel(map[IntentLabel]float64{IntentFeeding: 1.0})
-	res := m.Predict("samples/u1/s1.jpg", "FOOD_BOWL")
+	res, err := m.Predict("samples/u1/s1.jpg", "FOOD_BOWL")
+	if err != nil {
+		t.Fatalf("predict with priors failed: %v", err)
+	}
 	if len(res.Evidence) < 3 {
 		t.Fatalf("expected priors evidence appended")
 	}
