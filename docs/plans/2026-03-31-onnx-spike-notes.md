@@ -10,6 +10,8 @@
 2. `internal/app/model.go` 只有一个 `Model`，内部直接做哈希 + priors 融合，没有 predictor 抽象。
 3. 当前配置只有 `INFERENCE_ADDR` 和 `MODEL_PRIORS_PATH`，没有 ONNX 模型路径或 runtime 动态库路径。
 4. 当前 `services/inference/Dockerfile` 使用 `golang:1.22-alpine` + `alpine:3.20`，这更适合纯 Go 二进制，不适合第一版带 cgo + glibc 动态库的 ORT 运行时。
+5. 当前 API 上传接口把文件落盘到 `/tmp/meowlator/uploads/<sampleId>.jpg`，但 inference 服务收到的只有 `imageKey`，例如 `samples/<userId>/<sampleId>.jpg`。
+6. 目前 `api` 与 `inference` 容器之间没有共享 uploads volume，因此即使 ORT session 可用，inference 侧也无法按现有协议读取真实图片文件。
 
 ## 结论
 
@@ -56,6 +58,9 @@
    - `onnx` 模式必填
 4. `MODEL_PRIORS_PATH`
    - 保留；是否继续做 priors 融合，在 `Task 5` 中只允许作为 ONNX 输出后的轻量后处理，不能替代真实推理
+5. `UPLOAD_ROOT`
+   - 默认 `/tmp/meowlator/uploads`
+   - 用于把 `imageKey` 解析为 inference 容器内可读的真实图片路径
 
 ### 4. 错误处理策略
 
@@ -65,6 +70,7 @@
 2. `onnx` 模式：启动时即加载共享库和模型文件；任一缺失、版本不匹配或 Session 初始化失败，服务直接退出，不允许 silent fallback。
 3. `healthz` 仍返回进程是否存活；运行时初始化失败则进程不应进入监听状态。
 4. API 协议不改：`POST /v1/inference/predict` 保持现有输入输出结构。
+5. `onnx` 模式下如果 `imageKey` 无法映射到 `UPLOAD_ROOT` 下的真实文件，单次请求返回明确错误，不允许伪造预测结果。
 
 ### 5. 容器与本地运行要求
 
@@ -74,8 +80,10 @@
 2. runtime 镜像内需要放置：
    - `/app/models/<model>.onnx`
    - `/app/lib/libonnxruntime.so.<version>`
-3. 启动时通过环境变量显式传入上述两个路径，不依赖默认搜索路径。
-4. 第一版只做 CPU provider，不引入 CUDA/TensorRT 等额外依赖。
+   - inference 可读的 uploads 目录
+3. 启动时通过环境变量显式传入上述路径，不依赖默认搜索路径。
+4. `infra/docker-compose.yml` 需要让 `api` 与 `inference` 共享同一个 uploads volume。
+5. 第一版只做 CPU provider，不引入 CUDA/TensorRT 等额外依赖。
 
 原因：
 
@@ -92,6 +100,7 @@
 3. 新建 `onnx_predictor.go`：
    - 初始化 ORT environment
    - 加载 `.onnx` model
+   - 把 `imageKey` 映射为 `UPLOAD_ROOT/<sampleId><suffix>`
    - 运行真实 Session
    - 把输出 logits 映射成现有 `InferenceResult`
 4. `cmd/inference/main.go` 根据 `INFERENCE_PREDICTOR_MODE` 构造 predictor。
@@ -99,6 +108,7 @@
 6. 测试至少覆盖：
    - `onnx` 模式缺模型文件时失败
    - `onnx` 模式缺共享库时失败
+   - `onnx` 模式 `imageKey` 找不到本地文件时返回明确错误
    - `heuristic` 模式仍可运行
 
 ## 最小 smoke 命令
