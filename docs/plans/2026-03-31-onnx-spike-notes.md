@@ -8,10 +8,10 @@
 
 1. 当前云推理调用链是 `cmd/inference/main.go -> internal/api/handlers.go -> internal/app/model.go`。
 2. `internal/app/model.go` 只有一个 `Model`，内部直接做哈希 + priors 融合，没有 predictor 抽象。
-3. 当前配置只有 `INFERENCE_ADDR` 和 `MODEL_PRIORS_PATH`，没有 ONNX 模型路径或 runtime 动态库路径。
-4. 当前 `services/inference/Dockerfile` 使用 `golang:1.22-alpine` + `alpine:3.20`，这更适合纯 Go 二进制，不适合第一版带 cgo + glibc 动态库的 ORT 运行时。
-5. 当前 API 上传接口把文件落盘到 `/tmp/meowlator/uploads/<sampleId>.jpg`，但 inference 服务收到的只有 `imageKey`，例如 `samples/<userId>/<sampleId>.jpg`。
-6. 目前 `api` 与 `inference` 容器之间没有共享 uploads volume，因此即使 ORT session 可用，inference 侧也无法按现有协议读取真实图片文件。
+3. 当前配置只有 `INFERENCE_ADDR` 和 `MODEL_PRIORS_PATH`，没有 ONNX 模型路径、runtime 动态库路径，或图片根目录配置。
+4. 当前 API 上传接口把文件落盘到 `/tmp/meowlator/uploads/<sampleId>.jpg`，但 inference 服务收到的只有 `imageKey`，例如 `samples/<userId>/<sampleId>.jpg`。
+5. 当前 `api` 与 `inference` 容器之间没有共享 uploads volume，因此即使 ORT session 可用，inference 侧也无法按现有协议读取真实图片文件。
+6. 当前 `services/inference/Dockerfile` 使用 `golang:1.22-alpine` + `alpine:3.20`，这更适合纯 Go 二进制，不适合第一版带 cgo + glibc 动态库的 ORT 运行时。
 
 ## 结论
 
@@ -56,11 +56,11 @@
    - `onnx` 模式必填
 3. `ONNX_SHARED_LIB_PATH`
    - `onnx` 模式必填
-4. `MODEL_PRIORS_PATH`
-   - 保留；是否继续做 priors 融合，在 `Task 5` 中只允许作为 ONNX 输出后的轻量后处理，不能替代真实推理
-5. `UPLOAD_ROOT`
+4. `INFERENCE_UPLOAD_ROOT`
    - 默认 `/tmp/meowlator/uploads`
-   - 用于把 `imageKey` 解析为 inference 容器内可读的真实图片路径
+   - 用于根据 `sampleId` 还原本地图片路径
+5. `MODEL_PRIORS_PATH`
+   - 保留；是否继续做 priors 融合，在 `Task 5` 中只允许作为 ONNX 输出后的轻量后处理，不能替代真实推理
 
 ### 4. 错误处理策略
 
@@ -70,7 +70,7 @@
 2. `onnx` 模式：启动时即加载共享库和模型文件；任一缺失、版本不匹配或 Session 初始化失败，服务直接退出，不允许 silent fallback。
 3. `healthz` 仍返回进程是否存活；运行时初始化失败则进程不应进入监听状态。
 4. API 协议不改：`POST /v1/inference/predict` 保持现有输入输出结构。
-5. `onnx` 模式下如果 `imageKey` 无法映射到 `UPLOAD_ROOT` 下的真实文件，单次请求返回明确错误，不允许伪造预测结果。
+5. `onnx` 模式下如果 `imageKey` 无法映射到真实文件，或文件不存在，单次请求返回明确错误，不允许伪造预测结果。
 
 ### 5. 容器与本地运行要求
 
@@ -91,6 +91,15 @@
 2. `onnxruntime_go` 非 Windows 平台通过 `dlopen` 加载共享库。
 3. 官方 ONNX Runtime Linux 文档强调动态库路径和依赖环境要正确配置；第一版不值得在 Alpine/musl 上做兼容性试错。
 
+## 图片访问边界
+
+冻结如下：
+
+1. 第一版不改 `POST /v1/inference/predict` 的 JSON 协议，继续只传 `imageKey` 和 `sceneTag`。
+2. inference 服务根据 `imageKey` 中的文件后缀，结合 `sampleId` 还原本地路径：`<INFERENCE_UPLOAD_ROOT>/<sampleId><suffix>`。
+3. API 上传处理逻辑继续负责把文件落到该共享目录；容器模式下通过 volume 保证 inference 可读。
+4. 如果 `imageKey` 无法解析或目标文件不存在，ONNX predictor 直接返回明确错误，不回退到 heuristic。
+
 ## 最小实现拆解（Task 5）
 
 1. 把 `internal/app/model.go` 中与启发式推理有关的逻辑迁到 `heuristic_predictor.go`。
@@ -100,8 +109,8 @@
 3. 新建 `onnx_predictor.go`：
    - 初始化 ORT environment
    - 加载 `.onnx` model
-   - 把 `imageKey` 映射为 `UPLOAD_ROOT/<sampleId><suffix>`
-   - 运行真实 Session
+   - 把 `imageKey` 映射为 `INFERENCE_UPLOAD_ROOT/<sampleId><suffix>`
+   - 做真实图像前处理与 Session 推理
    - 把输出 logits 映射成现有 `InferenceResult`
 4. `cmd/inference/main.go` 根据 `INFERENCE_PREDICTOR_MODE` 构造 predictor。
 5. `internal/api/handlers.go` 依赖 predictor 接口，而不是具体 `Model`。
@@ -118,6 +127,7 @@
 ```bash
 cd services/inference && \
 INFERENCE_PREDICTOR_MODE=onnx \
+INFERENCE_UPLOAD_ROOT=/tmp/meowlator/uploads \
 ONNX_MODEL_PATH=/abs/path/model.onnx \
 ONNX_SHARED_LIB_PATH=/abs/path/libonnxruntime.so.1.24.1 \
 go run ./cmd/inference
@@ -134,7 +144,8 @@ curl -X POST http://127.0.0.1:8081/v1/inference/predict \
   -d '{"imageKey":"samples/u1/s1.jpg","sceneTag":"FOOD_BOWL"}'
 ```
 
-3. 返回结构仍为现有 `result` 包装。
+3. 若目标图片不存在，请求返回明确错误。
+4. 若目标图片存在，返回结构仍为现有 `result` 包装。
 
 ## 现有测试可复用部分
 
@@ -153,6 +164,7 @@ curl -X POST http://127.0.0.1:8081/v1/inference/predict \
 3. `services/inference/internal/app/model.go`
 4. `services/inference/internal/config/config.go`
 5. `services/inference/Dockerfile`
-6. `ml/training/scripts/export_onnx.py`
-7. `github.com/yalue/onnxruntime_go v1.27.0 README`
-8. ONNX Runtime official install docs: https://onnxruntime.ai/docs/install/
+6. `services/api/internal/api/handlers.go`
+7. `ml/training/scripts/export_onnx.py`
+8. `github.com/yalue/onnxruntime_go v1.27.0 README`
+9. ONNX Runtime official install docs: https://onnxruntime.ai/docs/install/
