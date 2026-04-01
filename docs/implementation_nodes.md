@@ -20,3 +20,5 @@
 | N014 | 2026-03-31 | 1.0.0 | 验收闭环 | 补齐本地烟雾链路、API 主链路集成测试和小程序最小页面测试，形成 M1 可回归验收基线。 | `make test` + `make smoke-local` | `4e290aa, 1462418, e7f7746` |
 | N015 | 2026-03-31 | 1.0.0 | 云侧 ONNX | 完成 ONNX 接入决策、云侧双 predictor 结构、共享 uploads volume 和运行时/CI 修正，云侧推理可切到 ONNX 真推理。 | `cd services/inference && go test ./...` + `make test-go` + `docker compose -f infra/docker-compose.yml up -d --build` | `03aaa1d, 55d4f76, 2516d96, a365706, 01fcd72, 5a6a966, 6fd2e3b, 48a1229, 6c10b5a, f2b8951, 7590217` |
 | N016 | 2026-03-31 | 1.0.0 | 最小可观测性 | 新增 API `/metrics` 端点，输出 finalize 延迟、错误率、fallback 比例与 copy 失败/超时等最小运行时指标，并补充上线指标文档。 | `cd services/api && go test ./...` + `curl http://127.0.0.1:8080/metrics` | `1e4083e, 53efb04` |
+| N017 | 2026-04-01 | 1.0.0 | 观测告警基线 | 新增 Prometheus/Alertmanager 基础配置与告警规则，Compose 接入本地监控栈，`finalize_duration_ms_bucket` 补 `+Inf` 以支持 p95 告警查询。 | `make test-go` + `docker compose -f infra/docker-compose.yml config` | `72fcb3c` |
+| N018 | 2026-04-01 | 1.0.0 | 训练自动调度 | 新增 `training_daily_pipeline.sh` 与 GitHub Actions 定时任务（每日 + 手动触发），缺少输入数据时自动跳过并保持任务成功。 | `make training-daily-pipeline` + `make test-py` | `e3f9597` |
