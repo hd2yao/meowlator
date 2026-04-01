@@ -17,3 +17,6 @@
 | N011 | 2026-02-23 | 1.0.0 | 文档知识点 | 扩展项目手册知识点深度说明与覆盖检查清单。 | 人工审阅 + 命令引用校对 | `9993102` |
 | N012 | 2026-02-24 | 1.0.0 | 文档重构 | 重建项目手册结构，合并重复信息并统一知识点章节。 | 人工审阅 + 章节关键字检查 | `4d04a21` |
 | N013 | 2026-02-24 | 1.0.0 | docs-localization | 全仓文档统一切换为中文表达 | manual review | `cb22b40` |
+| N014 | 2026-03-31 | 1.0.0 | 验收闭环 | 补齐本地烟雾链路、API 主链路集成测试和小程序最小页面测试，形成 M1 可回归验收基线。 | `make test` + `make smoke-local` | `4e290aa, 1462418, e7f7746` |
+| N015 | 2026-03-31 | 1.0.0 | 云侧 ONNX | 完成 ONNX 接入决策、云侧双 predictor 结构、共享 uploads volume 和运行时/CI 修正，云侧推理可切到 ONNX 真推理。 | `cd services/inference && go test ./...` + `make test-go` + `docker compose -f infra/docker-compose.yml up -d --build` | `03aaa1d, 55d4f76, 2516d96, a365706, 01fcd72, 5a6a966, 6fd2e3b, 48a1229, 6c10b5a, f2b8951, 7590217` |
+| N016 | 2026-03-31 | 1.0.0 | 最小可观测性 | 新增 API `/metrics` 端点，输出 finalize 延迟、错误率、fallback 比例与 copy 失败/超时等最小运行时指标，并补充上线指标文档。 | `cd services/api && go test ./...` + `curl http://127.0.0.1:8080/metrics` | `1e4083e, 53efb04` |
