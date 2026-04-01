@@ -66,25 +66,33 @@
 
 ### 本地启动方式
 
-1. 启动业务服务：
+1. （可选）先设置告警通道环境变量：
+
+```bash
+export ALERT_TG_BOT_TOKEN=123456:abc
+export ALERT_TG_CHAT_ID=123456789
+export ALERT_WEBHOOK_URL=http://127.0.0.1:19093/alert
+```
+
+2. 启动业务服务：
 
 ```bash
 make up
 ```
 
-2. 启动核心观测栈（Prometheus + Alertmanager）：
+3. 启动核心观测栈（Prometheus + Alertmanager）：
 
 ```bash
 make up-observability
 ```
 
-3. 可选启动 Grafana：
+4. 可选启动 Grafana：
 
 ```bash
 make up-grafana
 ```
 
-4. 访问入口：
+5. 访问入口：
    - Prometheus: `http://127.0.0.1:9090`
    - Alertmanager: `http://127.0.0.1:9093`
    - Grafana: `http://127.0.0.1:3000`（默认 `admin/admin`）
@@ -118,20 +126,22 @@ make up-grafana
 
 ### 告警通知通道
 
-1. Alertmanager 配置文件：`infra/monitoring/alertmanager.yml`
-2. 当前默认把 `severity=critical` 告警转发到 `telegram` 和 `webhook` receiver
-3. Telegram 参数：
+1. Alertmanager 模板配置：`infra/monitoring/alertmanager.yml`
+2. Alertmanager 运行时配置：`infra/monitoring/alertmanager.runtime.yml`（由渲染脚本生成，不入库）
+3. 渲染脚本：`tools/render_alertmanager_config.sh`（`make up*` 会自动先执行）
+4. 当前默认把 `severity=critical` 告警转发到 `telegram` 和 `webhook` receiver
+5. Telegram 参数：
    - `ALERT_TG_BOT_TOKEN`
    - `ALERT_TG_CHAT_ID`
-4. Webhook 参数：
+6. Webhook 参数：
    - `ALERT_WEBHOOK_URL`（Compose 默认值：`http://127.0.0.1:19093/alert`）
-5. 本地调试时可在启动前覆盖环境变量，例如：
+7. 本地调试时可在启动前覆盖环境变量，例如：
 
 ```bash
 ALERT_TG_BOT_TOKEN=123456:abc \
 ALERT_TG_CHAT_ID=123456789 \
 ALERT_WEBHOOK_URL=http://127.0.0.1:19093/alert \
-docker compose -f infra/docker-compose.yml up -d alertmanager
+make up-observability
 ```
 
 ### 现阶段限制
