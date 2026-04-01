@@ -98,6 +98,8 @@ services:
       - "--config.expand-env"
     environment:
       ALERT_WEBHOOK_URL: "http://127.0.0.1:19093/alert"
+      ALERT_TG_BOT_TOKEN: "${ALERT_TG_BOT_TOKEN:-000000000:placeholder}"
+      ALERT_TG_CHAT_ID: "${ALERT_TG_CHAT_ID:-1871908422}"
     ports:
       - "9093:9093"
     volumes:
