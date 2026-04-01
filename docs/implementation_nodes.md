@@ -24,3 +24,4 @@
 | N018 | 2026-04-01 | 1.0.0 | 训练自动调度 | 新增 `training_daily_pipeline.sh` 与 GitHub Actions 定时任务（每日 + 手动触发），缺少输入数据时自动跳过并保持任务成功。 | `make training-daily-pipeline` + `make test-py` | `e3f9597` |
 | N019 | 2026-04-01 | 1.0.0 | 告警通知通道 | Alertmanager 新增 `critical` 级 webhook 路由，支持 `ALERT_WEBHOOK_URL` 环境变量注入，补充本地调试说明。 | `docker compose -f infra/docker-compose.yml config` | `0f9e57a` |
 | N020 | 2026-04-01 | 1.0.0 | Grafana 预置看板 | Grafana 增加 provisioning 自动加载 Prometheus datasource 与运行时总览看板（错误率、p95、fallback、copy 超时）。 | `docker compose -f infra/docker-compose.yml config` + `python3 -m json.tool infra/monitoring/grafana/dashboards/meowlator-runtime-overview.json` | `1672d22` |
+| N021 | 2026-04-01 | 1.0.0 | Telegram 告警接入 | Alertmanager 新增 Telegram receiver，`critical` 告警并行发送 Telegram 与 webhook，并通过 `ALERT_TG_BOT_TOKEN`/`ALERT_TG_CHAT_ID` 注入参数。 | `docker compose -f infra/docker-compose.yml config` + `make test` | `2dfbb56, 9e53212` |
