@@ -23,9 +23,9 @@
 4. `cloud_fallback_ratio` — 目标 < 30%
 5. `llm_timeout_ratio`
 
-## 当前已落地的最小观测出口
+## 当前已落地的观测与告警基础
 
-当前版本没有接 Prometheus/Grafana 栈，先在 API 服务内提供轻量级 `/metrics` 文本端点，用于本地联调、灰度观察和后续对接抓取。
+当前版本已接入本地 Prometheus + Alertmanager + Grafana（通过 `infra/docker-compose.yml` 启动），并保留 API 服务内 `/metrics` 文本端点作为采集入口。
 
 ### 端点
 
@@ -47,7 +47,7 @@
    - `finalize` 结果中 `fallbackUsed=true` 的次数
 6. `finalize_duration_ms_count`
 7. `finalize_duration_ms_sum`
-8. `finalize_duration_ms_bucket{le="50|100|250|500|1000|2500|5000"}`
+8. `finalize_duration_ms_bucket{le="50|100|250|500|1000|2500|5000|+Inf"}`
    - 用于计算 `finalize_p95_ms`
 9. `copy_requests_total`
    - copy 生成总请求数，包含缓存命中
@@ -64,11 +64,49 @@
 4. `finalize_p95_ms`
    - 当前通过 `finalize_duration_ms_bucket` 近似计算，不在服务内直接输出 p95
 
+### 本地启动方式
+
+1. 启动业务服务：
+
+```bash
+make up
+```
+
+2. 启动核心观测栈（Prometheus + Alertmanager）：
+
+```bash
+make up-observability
+```
+
+3. 可选启动 Grafana：
+
+```bash
+make up-grafana
+```
+
+4. 访问入口：
+   - Prometheus: `http://127.0.0.1:9090`
+   - Alertmanager: `http://127.0.0.1:9093`
+   - Grafana: `http://127.0.0.1:3000`（默认 `admin/admin`）
+
+### 已落地告警规则
+
+规则文件：`infra/monitoring/alerts.yml`
+
+1. `MeowlatorAPIErrorRateHigh`
+   - 条件：`api_error_rate > 1.5%` 持续 5 分钟
+2. `MeowlatorFinalizeP95High`
+   - 条件：`finalize_p95_ms > 2500` 持续 5 分钟
+3. `MeowlatorCloudFallbackRatioHigh`
+   - 条件：`cloud_fallback_ratio > 30%` 持续 10 分钟
+4. `MeowlatorCopyTimeoutRatioHigh`
+   - 条件：`llm_timeout_ratio > 10%` 持续 10 分钟
+
 ### 现阶段限制
 
-1. 指标为进程内内存累计值，服务重启后会清零
-2. 还没有多实例聚合
-3. 还没有告警推送，只提供观测出口
+1. 指标仍是进程内内存累计值，服务重启后会清零
+2. Alertmanager 当前使用本地默认 receiver，未接飞书/钉钉/邮件通知
+3. Grafana 仅提供查询入口，未预置 dashboard JSON 模板
 
 ## 成本指标
 

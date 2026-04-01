@@ -94,6 +94,7 @@ func TestMetricsEndpointIncludesFinalizeAndCopyCounters(t *testing.T) {
 		"finalize_requests_total 1",
 		"finalize_fallback_total 1",
 		"finalize_duration_ms_count 1",
+		"finalize_duration_ms_bucket{le=\"+Inf\"} 1",
 		"copy_requests_total 1",
 	} {
 		if !strings.Contains(raw, wanted) {

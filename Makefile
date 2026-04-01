@@ -1,4 +1,4 @@
-.PHONY: up down test test-go test-py test-mini smoke-local run-api run-inference fmt train-vision train-vision-smoke train-vision-resume export-onnx clean-feedback-data build-training-manifest active-learning-daily build-eval-splits threshold-report evaluate-intent gate-model
+.PHONY: up down up-observability up-grafana down-observability test test-go test-py test-mini smoke-local run-api run-inference fmt train-vision train-vision-smoke train-vision-resume export-onnx clean-feedback-data build-training-manifest active-learning-daily build-eval-splits threshold-report evaluate-intent gate-model
 
 RESUME_CHECKPOINT ?= ./artifacts/mobilenetv3-small-v2/mobilenetv3-small-v2.pt
 
@@ -7,6 +7,15 @@ up:
 
 down:
 	docker compose -f infra/docker-compose.yml down
+
+up-observability:
+	docker compose -f infra/docker-compose.yml up -d prometheus alertmanager
+
+up-grafana:
+	docker compose -f infra/docker-compose.yml up -d grafana
+
+down-observability:
+	docker compose -f infra/docker-compose.yml stop prometheus alertmanager grafana
 
 test: test-go test-py test-mini
 
