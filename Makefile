@@ -1,17 +1,20 @@
-.PHONY: up down up-observability up-grafana down-observability test test-go test-py test-mini smoke-local run-api run-inference fmt train-vision train-vision-smoke train-vision-resume training-daily-pipeline export-onnx clean-feedback-data build-training-manifest active-learning-daily build-eval-splits threshold-report evaluate-intent gate-model
+.PHONY: render-alertmanager-config up down up-observability up-grafana down-observability test test-go test-py test-mini smoke-local run-api run-inference fmt train-vision train-vision-smoke train-vision-resume training-daily-pipeline export-onnx clean-feedback-data build-training-manifest active-learning-daily build-eval-splits threshold-report evaluate-intent gate-model
 
 RESUME_CHECKPOINT ?= ./artifacts/mobilenetv3-small-v2/mobilenetv3-small-v2.pt
 
-up:
+render-alertmanager-config:
+	bash tools/render_alertmanager_config.sh
+
+up: render-alertmanager-config
 	docker compose -f infra/docker-compose.yml up --build -d
 
 down:
 	docker compose -f infra/docker-compose.yml down
 
-up-observability:
+up-observability: render-alertmanager-config
 	docker compose -f infra/docker-compose.yml up -d prometheus alertmanager
 
-up-grafana:
+up-grafana: render-alertmanager-config
 	docker compose -f infra/docker-compose.yml up -d grafana
 
 down-observability:
