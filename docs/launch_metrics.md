@@ -119,18 +119,25 @@ make up-grafana
 ### 告警通知通道
 
 1. Alertmanager 配置文件：`infra/monitoring/alertmanager.yml`
-2. 当前默认把 `severity=critical` 告警转发到 `webhook` receiver
-3. `webhook` 地址由 `ALERT_WEBHOOK_URL` 控制（Compose 默认值：`http://127.0.0.1:19093/alert`）
-4. 本地调试时可在启动前覆盖环境变量，例如：
+2. 当前默认把 `severity=critical` 告警转发到 `telegram` 和 `webhook` receiver
+3. Telegram 参数：
+   - `ALERT_TG_BOT_TOKEN`
+   - `ALERT_TG_CHAT_ID`
+4. Webhook 参数：
+   - `ALERT_WEBHOOK_URL`（Compose 默认值：`http://127.0.0.1:19093/alert`）
+5. 本地调试时可在启动前覆盖环境变量，例如：
 
 ```bash
-ALERT_WEBHOOK_URL=http://127.0.0.1:19093/alert docker compose -f infra/docker-compose.yml up -d alertmanager
+ALERT_TG_BOT_TOKEN=123456:abc \
+ALERT_TG_CHAT_ID=123456789 \
+ALERT_WEBHOOK_URL=http://127.0.0.1:19093/alert \
+docker compose -f infra/docker-compose.yml up -d alertmanager
 ```
 
 ### 现阶段限制
 
 1. 指标仍是进程内内存累计值，服务重启后会清零
-2. Alertmanager 当前使用本地默认 receiver，未接飞书/钉钉/邮件通知
+2. 当前只接入 Telegram + Webhook，未接飞书/钉钉/邮件专用模板
 3. 当前仅预置 1 个运行时总览看板，尚未覆盖业务与成本维度看板
 
 ## 成本指标
