@@ -9,6 +9,15 @@ route:
   group_interval: 5m
   repeat_interval: 4h
   receiver: default
+  routes:
+    - receiver: webhook
+      continue: true
+      matchers:
+        - severity="critical"
 
 receivers:
   - name: default
+  - name: webhook
+    webhook_configs:
+      - url: "${ALERT_WEBHOOK_URL}"
+        send_resolved: true

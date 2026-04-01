@@ -88,6 +88,7 @@ make up-grafana
    - Prometheus: `http://127.0.0.1:9090`
    - Alertmanager: `http://127.0.0.1:9093`
    - Grafana: `http://127.0.0.1:3000`（默认 `admin/admin`）
+   - 预置看板：`Meowlator Runtime Overview`
 
 ### 已落地告警规则
 
@@ -102,11 +103,35 @@ make up-grafana
 4. `MeowlatorCopyTimeoutRatioHigh`
    - 条件：`llm_timeout_ratio > 10%` 持续 10 分钟
 
+### Grafana 预置看板
+
+1. datasource provisioning：`infra/monitoring/grafana/provisioning/datasources/prometheus.yml`
+2. dashboard provider：`infra/monitoring/grafana/provisioning/dashboards/meowlator.yml`
+3. dashboard JSON：`infra/monitoring/grafana/dashboards/meowlator-runtime-overview.json`
+4. 预置看板覆盖：
+   - API Requests/s
+   - API Error Rate (%)
+   - Finalize P95 (ms)
+   - Cloud Fallback Ratio (%)
+   - Copy Timeout Ratio (%)
+   - Finalize Requests/s
+
+### 告警通知通道
+
+1. Alertmanager 配置文件：`infra/monitoring/alertmanager.yml`
+2. 当前默认把 `severity=critical` 告警转发到 `webhook` receiver
+3. `webhook` 地址由 `ALERT_WEBHOOK_URL` 控制（Compose 默认值：`http://host.docker.internal:19093/alert`）
+4. 本地调试时可在启动前覆盖环境变量，例如：
+
+```bash
+ALERT_WEBHOOK_URL=http://127.0.0.1:19093/alert docker compose -f infra/docker-compose.yml up -d alertmanager
+```
+
 ### 现阶段限制
 
 1. 指标仍是进程内内存累计值，服务重启后会清零
 2. Alertmanager 当前使用本地默认 receiver，未接飞书/钉钉/邮件通知
-3. Grafana 仅提供查询入口，未预置 dashboard JSON 模板
+3. 当前仅预置 1 个运行时总览看板，尚未覆盖业务与成本维度看板
 
 ## 成本指标
 

@@ -95,6 +95,9 @@ services:
     container_name: meowlator-alertmanager
     command:
       - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--config.expand-env"
+    environment:
+      ALERT_WEBHOOK_URL: "http://host.docker.internal:19093/alert"
     ports:
       - "9093:9093"
     volumes:
@@ -111,6 +114,8 @@ services:
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       prometheus:
         condition: service_started
