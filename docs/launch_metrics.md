@@ -102,6 +102,17 @@ make up-grafana
 4. `MeowlatorCopyTimeoutRatioHigh`
    - 条件：`llm_timeout_ratio > 10%` 持续 10 分钟
 
+### 告警通知通道
+
+1. Alertmanager 配置文件：`infra/monitoring/alertmanager.yml`
+2. 当前默认把 `severity=critical` 告警转发到 `webhook` receiver
+3. `webhook` 地址由 `ALERT_WEBHOOK_URL` 控制（Compose 默认值：`http://host.docker.internal:19093/alert`）
+4. 本地调试时可在启动前覆盖环境变量，例如：
+
+```bash
+ALERT_WEBHOOK_URL=http://127.0.0.1:19093/alert docker compose -f infra/docker-compose.yml up -d alertmanager
+```
+
 ### 现阶段限制
 
 1. 指标仍是进程内内存累计值，服务重启后会清零
