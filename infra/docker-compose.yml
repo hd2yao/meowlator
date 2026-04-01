@@ -97,7 +97,7 @@ services:
       - "--config.file=/etc/alertmanager/alertmanager.yml"
       - "--config.expand-env"
     environment:
-      ALERT_WEBHOOK_URL: "http://host.docker.internal:19093/alert"
+      ALERT_WEBHOOK_URL: "http://127.0.0.1:19093/alert"
     ports:
       - "9093:9093"
     volumes:
