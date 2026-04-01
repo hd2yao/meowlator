@@ -22,3 +22,5 @@
 | N016 | 2026-03-31 | 1.0.0 | 最小可观测性 | 新增 API `/metrics` 端点，输出 finalize 延迟、错误率、fallback 比例与 copy 失败/超时等最小运行时指标，并补充上线指标文档。 | `cd services/api && go test ./...` + `curl http://127.0.0.1:8080/metrics` | `1e4083e, 53efb04` |
 | N017 | 2026-04-01 | 1.0.0 | 观测告警基线 | 新增 Prometheus/Alertmanager 基础配置与告警规则，Compose 接入本地监控栈，`finalize_duration_ms_bucket` 补 `+Inf` 以支持 p95 告警查询。 | `make test-go` + `docker compose -f infra/docker-compose.yml config` | `72fcb3c` |
 | N018 | 2026-04-01 | 1.0.0 | 训练自动调度 | 新增 `training_daily_pipeline.sh` 与 GitHub Actions 定时任务（每日 + 手动触发），缺少输入数据时自动跳过并保持任务成功。 | `make training-daily-pipeline` + `make test-py` | `e3f9597` |
+| N019 | 2026-04-01 | 1.0.0 | 告警通知通道 | Alertmanager 新增 `critical` 级 webhook 路由，支持 `ALERT_WEBHOOK_URL` 环境变量注入，补充本地调试说明。 | `docker compose -f infra/docker-compose.yml config` | `0f9e57a` |
+| N020 | 2026-04-01 | 1.0.0 | Grafana 预置看板 | Grafana 增加 provisioning 自动加载 Prometheus datasource 与运行时总览看板（错误率、p95、fallback、copy 超时）。 | `docker compose -f infra/docker-compose.yml config` + `python3 -m json.tool infra/monitoring/grafana/dashboards/meowlator-runtime-overview.json` | `1672d22` |
