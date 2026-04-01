@@ -1,0 +1,64 @@
+groups:
+  - name: meowlator-runtime
+    rules:
+      - alert: MeowlatorAPIErrorRateHigh
+        expr: |
+          (
+            sum(rate(api_errors_total[5m])) /
+            sum(rate(api_requests_total[5m]))
+          ) > 0.015
+          and
+          sum(rate(api_requests_total[5m])) > 0
+        for: 5m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "API error rate above 1.5%"
+          description: "api_error_rate has exceeded 1.5% for at least 5 minutes."
+
+      - alert: MeowlatorFinalizeP95High
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (rate(finalize_duration_ms_bucket[5m]))
+          ) > 2500
+        for: 5m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "Finalize p95 above 2500ms"
+          description: "Inference latency has crossed alert threshold. Check inference and downstream dependencies."
+
+      - alert: MeowlatorCloudFallbackRatioHigh
+        expr: |
+          (
+            sum(rate(finalize_fallback_total[10m])) /
+            sum(rate(finalize_requests_total[10m]))
+          ) > 0.30
+          and
+          sum(rate(finalize_requests_total[10m])) > 0
+        for: 10m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "Cloud fallback ratio above 30%"
+          description: "cloud_fallback_ratio is elevated. Check edge hit ratio and threshold configuration."
+
+      - alert: MeowlatorCopyTimeoutRatioHigh
+        expr: |
+          (
+            sum(rate(copy_timeouts_total[10m])) /
+            sum(rate(copy_requests_total[10m]))
+          ) > 0.10
+          and
+          sum(rate(copy_requests_total[10m])) > 0
+        for: 10m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "Copy timeout ratio above 10%"
+          description: "Upstream copy timeout ratio is elevated and may degrade result-page copy stability."

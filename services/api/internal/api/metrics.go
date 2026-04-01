@@ -98,6 +98,7 @@ func (m *Metrics) Render() string {
 	for _, bucket := range finalizeDurationBuckets {
 		fmt.Fprintf(&b, "finalize_duration_ms_bucket{le=\"%d\"} %d\n", bucket, m.finalizeBuckets[bucket])
 	}
+	fmt.Fprintf(&b, "finalize_duration_ms_bucket{le=\"+Inf\"} %d\n", m.finalizeDurationCount)
 	writeMetric(&b, "copy_requests_total", m.copyRequestsTotal)
 	writeMetric(&b, "copy_failures_total", m.copyFailuresTotal)
 	writeMetric(&b, "copy_timeouts_total", m.copyTimeoutsTotal)
