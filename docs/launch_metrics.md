@@ -135,7 +135,16 @@ make up-grafana
    - `ALERT_TG_CHAT_ID`
 6. Webhook 参数：
    - `ALERT_WEBHOOK_URL`（Compose 默认值：`http://127.0.0.1:19093/alert`）
-7. 本地调试时可在启动前覆盖环境变量，例如：
+7. 可在仓库根目录创建本机私有文件 `.env.alerting.local`（不入库），例如：
+
+```bash
+ALERT_TG_BOT_TOKEN=123456:abc
+ALERT_TG_CHAT_ID=123456789
+ALERT_WEBHOOK_URL=http://127.0.0.1:19093/alert
+```
+
+8. `make up` / `make up-observability` / `make up-grafana` 会自动读取该文件并渲染 `alertmanager.runtime.yml`。
+9. 本地调试时也可在启动前临时覆盖环境变量，例如：
 
 ```bash
 ALERT_TG_BOT_TOKEN=123456:abc \
