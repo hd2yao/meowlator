@@ -44,7 +44,6 @@ fi
 if [ "${had_webhook_url}" -eq 1 ]; then
   ALERT_WEBHOOK_URL="${orig_webhook_url}"
 fi
-
 tg_token="${ALERT_TG_BOT_TOKEN:-000000000:placeholder}"
 tg_chat_id="${ALERT_TG_CHAT_ID:-1871908422}"
 webhook_url="${ALERT_WEBHOOK_URL:-http://127.0.0.1:19093/alert}"
