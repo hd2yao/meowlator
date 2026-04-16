@@ -35,6 +35,7 @@ type HandlerOptions struct {
 	WhitelistEnabled    bool
 	WhitelistUsers      []string
 	WhitelistDailyQuota int
+	Metrics             *Metrics
 }
 
 type Handler struct {
@@ -48,6 +49,7 @@ type Handler struct {
 	whitelistEnabled    bool
 	whitelistUsers      map[string]struct{}
 	whitelistDailyQuota int
+	metrics             *Metrics
 }
 
 func NewHandler(svc *app.Service, opts HandlerOptions) *Handler {
@@ -79,11 +81,13 @@ func NewHandler(svc *app.Service, opts HandlerOptions) *Handler {
 		whitelistEnabled:    opts.WhitelistEnabled,
 		whitelistUsers:      whitelistUsers,
 		whitelistDailyQuota: opts.WhitelistDailyQuota,
+		metrics:             metricsOrDefault(opts.Metrics),
 	}
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /healthz", h.withObserved(h.healthz))
+	mux.HandleFunc("GET /metrics", h.metricsEndpoint)
 	mux.HandleFunc("POST /v1/auth/wechat/login", h.withObserved(h.login))
 
 	mux.HandleFunc("POST /v1/samples/upload-url", h.withObserved(h.withAuth(h.withRateLimit(h.withRequestSignature(h.createUploadURL)))))
@@ -104,6 +108,7 @@ func (h *Handler) withObserved(next http.HandlerFunc) http.HandlerFunc {
 		startedAt := time.Now()
 		recorder := &responseRecorder{ResponseWriter: w, statusCode: http.StatusOK}
 		next(recorder, r)
+		h.metrics.ObserveAPIRequest(recorder.statusCode)
 		userID := userIDFromContext(r.Context())
 		if userID == "" {
 			userID = "anonymous"
@@ -219,6 +224,11 @@ func (h *Handler) healthz(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+func (h *Handler) metricsEndpoint(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	_, _ = io.WriteString(w, h.metrics.Render())
+}
+
 type loginReq struct {
 	Code string `json:"code"`
 }
@@ -308,8 +318,10 @@ type finalizeReq struct {
 }
 
 func (h *Handler) finalizeInference(w http.ResponseWriter, r *http.Request) {
+	startedAt := time.Now()
 	var req finalizeReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.metrics.ObserveFinalize(time.Since(startedAt), false, false)
 		writeError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
@@ -321,10 +333,19 @@ func (h *Handler) finalizeInference(w http.ResponseWriter, r *http.Request) {
 		EdgeRuntime:   req.EdgeRuntime,
 	})
 	if err != nil {
+		h.metrics.ObserveFinalize(time.Since(startedAt), false, false)
 		writeDomainError(w, err)
 		return
 	}
+	h.metrics.ObserveFinalize(time.Since(startedAt), out.FallbackUsed, true)
 	writeJSON(w, http.StatusOK, out)
+}
+
+func metricsOrDefault(metrics *Metrics) *Metrics {
+	if metrics != nil {
+		return metrics
+	}
+	return NewMetrics()
 }
 
 type feedbackReq struct {

@@ -8,11 +8,11 @@ import (
 )
 
 type Handler struct {
-	model *app.Model
+	predictor app.Predictor
 }
 
-func NewHandler(model *app.Model) *Handler {
-	return &Handler{model: model}
+func NewHandler(predictor app.Predictor) *Handler {
+	return &Handler{predictor: predictor}
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
@@ -43,7 +43,11 @@ func (h *Handler) predict(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "imageKey is required")
 		return
 	}
-	result := h.model.Predict(req.ImageKey, req.SceneTag)
+	result, err := h.predictor.Predict(req.ImageKey, req.SceneTag)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	writeJSON(w, http.StatusOK, predictResp{Result: result})
 }
 

@@ -1,12 +1,24 @@
-.PHONY: up down test test-go test-py test-mini run-api run-inference fmt train-vision train-vision-smoke train-vision-resume export-onnx clean-feedback-data build-training-manifest active-learning-daily build-eval-splits threshold-report evaluate-intent gate-model
+.PHONY: render-alertmanager-config up down up-observability up-grafana down-observability test test-go test-py test-mini smoke-local run-api run-inference fmt train-vision train-vision-smoke train-vision-resume training-daily-pipeline export-onnx clean-feedback-data build-training-manifest active-learning-daily build-eval-splits threshold-report evaluate-intent gate-model
 
 RESUME_CHECKPOINT ?= ./artifacts/mobilenetv3-small-v2/mobilenetv3-small-v2.pt
 
-up:
+render-alertmanager-config:
+	bash tools/render_alertmanager_config.sh
+
+up: render-alertmanager-config
 	docker compose -f infra/docker-compose.yml up --build -d
 
 down:
 	docker compose -f infra/docker-compose.yml down
+
+up-observability: render-alertmanager-config
+	docker compose -f infra/docker-compose.yml up -d prometheus alertmanager
+
+up-grafana: render-alertmanager-config
+	docker compose -f infra/docker-compose.yml up -d grafana
+
+down-observability:
+	docker compose -f infra/docker-compose.yml stop prometheus alertmanager grafana
 
 test: test-go test-py test-mini
 
@@ -19,6 +31,9 @@ test-py:
 
 test-mini:
 	cd apps/wechat-miniprogram && npm run typecheck
+
+smoke-local:
+	bash tools/smoke_local_flow.sh
 
 run-api:
 	cd services/api && go run ./cmd/api
@@ -34,6 +49,9 @@ train-vision-smoke:
 
 train-vision-resume:
 	cd ml/training && python3 scripts/train.py --dataset-root ./data/oxford_pet --output-dir ./artifacts/mobilenetv3-small-v2 --resume-checkpoint $(RESUME_CHECKPOINT) --epochs 1 --batch-size 32
+
+training-daily-pipeline:
+	bash tools/training_daily_pipeline.sh
 
 clean-feedback-data:
 	cd ml/training && python3 scripts/data_cleaning.py --input ./data/feedback/raw_feedback.jsonl --output ./data/feedback/clean_feedback.jsonl --report ./artifacts/pipeline/cleaning_report.json

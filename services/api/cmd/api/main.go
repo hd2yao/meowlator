@@ -14,6 +14,7 @@ import (
 
 func main() {
 	cfg := config.Load()
+	metrics := api.NewMetrics()
 	var repo app.Repository = repository.NewMemoryRepository()
 	if cfg.MySQLDSN != "" {
 		mysqlRepo, err := repository.NewMySQLRepository(cfg.MySQLDSN)
@@ -29,7 +30,10 @@ func main() {
 		log.Printf("mysql dsn not set, using in-memory repository")
 	}
 	inferenceClient := app.NewHTTPInferenceClient(cfg.InferenceServiceURL)
-	var copyClient app.CopyClient = app.NewCopyClient(app.CopyClientConfig{Timeout: cfg.CopyTimeout})
+	var copyClient app.CopyClient = app.NewCopyClient(app.CopyClientConfig{
+		Timeout:  cfg.CopyTimeout,
+		Observer: metrics,
+	})
 	if cfg.RedisAddr != "" {
 		cache, err := app.NewRedisCopyCache(cfg.RedisAddr)
 		if err != nil {
@@ -39,6 +43,7 @@ func main() {
 			log.Printf("redis copy cache enabled")
 		}
 	}
+	copyClient = app.NewObservedCopyClient(copyClient, metrics)
 
 	svc := app.NewService(
 		repo,
@@ -58,6 +63,7 @@ func main() {
 		WhitelistEnabled:    cfg.WhitelistEnabled,
 		WhitelistUsers:      cfg.WhitelistUsers,
 		WhitelistDailyQuota: cfg.WhitelistDailyQuota,
+		Metrics:             metrics,
 	})
 	mux := http.NewServeMux()
 	h.Register(mux)

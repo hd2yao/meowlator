@@ -1,0 +1,41 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by:
+    - alertname
+    - service
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: default
+  routes:
+    - receiver: telegram
+      continue: true
+      matchers:
+        - severity="critical"
+    - receiver: webhook
+      continue: true
+      matchers:
+        - severity="critical"
+
+receivers:
+  - name: default
+  - name: telegram
+    telegram_configs:
+      - bot_token: "${ALERT_TG_BOT_TOKEN}"
+        chat_id: ${ALERT_TG_CHAT_ID}
+        parse_mode: HTML
+        send_resolved: true
+        message: |
+          <b>[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}</b>
+          <b>Service:</b> {{ .CommonLabels.service }}
+          <b>Severity:</b> {{ .CommonLabels.severity }}
+          {{ range .Alerts -}}
+          <b>Summary:</b> {{ .Annotations.summary }}
+          <b>Description:</b> {{ .Annotations.description }}
+          {{ end }}
+  - name: webhook
+    webhook_configs:
+      - url: "${ALERT_WEBHOOK_URL}"
+        send_resolved: true

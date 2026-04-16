@@ -19,6 +19,7 @@ apps/wechat-miniprogram/project.private.config.json
 # Local env
 .env
 .env.*
+infra/monitoring/alertmanager.runtime.yml
 
 # IDE
 .vscode/

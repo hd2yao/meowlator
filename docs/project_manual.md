@@ -450,6 +450,7 @@ make run-inference
 make train-vision
 make train-vision-smoke
 make train-vision-resume
+make training-daily-pipeline
 make export-onnx
 
 # 数据流水线
@@ -461,6 +462,14 @@ make threshold-report
 make evaluate-intent
 make gate-model
 ```
+
+自动调度：
+
+1. GitHub Actions 工作流：`.github/workflows/training-daily.yml`
+2. 触发方式：
+   - 每天 `09:10`（CST）自动运行
+   - 手动 `workflow_dispatch` 触发
+3. 缺少输入数据时自动跳过，不会把定时任务标记为失败
 
 ---
 
@@ -488,4 +497,3 @@ make gate-model
 6. 我能解释阈值如何决定端云路径。
 7. 我能解释灰度分桶与 `selectedModel`。
 8. 我能给出一套最小可执行的灰度回滚流程。
-
