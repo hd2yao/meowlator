@@ -1,0 +1,64 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 活力珊瑚橘色渐变，传达温暖、活力与亲和力 -->
+    <linearGradient id="bg_gradient" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF9668" />
+      <stop offset="100%" stop-color="#FF633E" />
+    </linearGradient>
+
+    <!-- 卡片与图标投影，提升UI质感 -->
+    <filter id="shadow" x="0" y="0" width="1024" height="1024" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="28" stdDeviation="30" flood-opacity="0.15" flood-color="#D94022" />
+    </filter>
+  </defs>
+
+  <!-- ==================== 1. 应用基础外壳 (Apple 风格圆角矩形) ==================== -->
+  <rect x="80" y="80" width="864" height="864" rx="200" fill="url(#bg_gradient)" />
+
+  <!-- 背景轻微的光效点缀 (增加呼吸感) -->
+  <circle cx="512" cy="512" r="320" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="24" />
+
+  <!-- ==================== 2. AI 魔法星星 ==================== -->
+  <!-- 置于右上方，象征大模型和 AI 翻译能力 -->
+  <g transform="translate(740, 160)">
+    <path d="M 50 0 C 50 25 75 50 100 50 C 75 50 50 75 50 100 C 50 75 25 50 0 50 C 25 50 50 25 50 0 Z" fill="#FFEAA7" opacity="0.95" />
+    <path d="M 120 70 C 120 85 135 100 150 100 C 135 100 120 115 120 130 C 120 115 105 100 90 100 C 105 100 120 85 120 70 Z" fill="#FFFFFF" opacity="0.8" />
+  </g>
+
+  <!-- ==================== 3. 极简猫耳气泡 (核心形态) ==================== -->
+  <!-- 利用 fill 和 stroke 消除接缝，并使边缘圆润可爱 -->
+  <g filter="url(#shadow)" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="12" stroke-linejoin="round" stroke-linecap="round">
+    
+    <!-- 左耳 (圆角三角形) -->
+    <path d="M 280 440 L 300 260 C 305 230 330 220 350 240 L 460 384 Z" />
+    
+    <!-- 右耳 (圆角三角形，同理对称) -->
+    <path d="M 744 440 L 724 260 C 719 230 694 220 674 240 L 564 384 Z" />
+    
+    <!-- 气泡的尾巴 (左下侧引出) -->
+    <path d="M 380 804 L 180 880 Q 220 820 240 730 Z" />
+
+    <!-- 猫脸核心区域/气泡主体 (扁平药丸形) -->
+    <rect x="212" y="384" width="600" height="420" rx="210" />
+
+  </g>
+
+  <!-- ==================== 4. 喵语声波纹 (内部核心元素) ==================== -->
+  <!-- 清爽排布在极简气泡内，直击 "音频翻译" 功能 -->
+  <g fill="#FF6B4A">
+    <!-- 声波柱 1 (左) -->
+    <rect x="348" y="558" width="40" height="72" rx="20" />
+    
+    <!-- 声波柱 2 -->
+    <rect x="420" y="526" width="40" height="136" rx="20" />
+    
+    <!-- 声波柱 3 (中点最高峰) -->
+    <rect x="492" y="494" width="40" height="200" rx="20" />
+    
+    <!-- 声波柱 4 -->
+    <rect x="564" y="526" width="40" height="136" rx="20" />
+    
+    <!-- 声波柱 5 (右) -->
+    <rect x="636" y="558" width="40" height="72" rx="20" />
+  </g>
+</svg>

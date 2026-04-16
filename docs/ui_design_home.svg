@@ -1,0 +1,54 @@
+<svg width="375" height="812" viewBox="0 0 375 812" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="375" height="812" rx="40" fill="#FAFAFA"/>
+  
+  <!-- Decorative Blobs -->
+  <circle cx="320" cy="80" r="100" fill="#FF8A4C" fill-opacity="0.1" filter="blur(40px)"/>
+  <circle cx="50" cy="600" r="120" fill="#FCD34D" fill-opacity="0.15" filter="blur(40px)"/>
+  
+  <!-- Status bar -->
+  <text x="32" y="28" fill="#111827" font-family="-apple-system, Inter, sans-serif" font-size="14" font-weight="600">9:41</text>
+  <rect x="127" y="10" width="120" height="30" rx="15" fill="black"/>
+  <rect x="320" y="16" width="22" height="11" rx="3.5" stroke="black"/>
+  <rect x="322" y="18" width="15" height="7" rx="2" fill="black"/>
+  
+  <!-- Nav bar -->
+  <text x="187.5" y="70" fill="#1F2937" font-family="-apple-system, Inter, sans-serif" font-size="18" font-weight="bold" text-anchor="middle">Meowlator</text>
+  <rect x="278" y="52" width="87" height="32" rx="16" stroke="#E5E7EB" fill="white" fill-opacity="0.5"/>
+  <circle cx="298" cy="68" r="5" stroke="black" stroke-width="2"/>
+  <circle cx="298" cy="68" r="2" fill="black"/>
+  <circle cx="340" cy="68" r="5" stroke="black" stroke-width="2"/>
+  <line x1="319" y1="60" x2="319" y2="76" stroke="#E5E7EB" stroke-width="1"/>
+  
+  <!-- Hero Text -->
+  <text x="24" y="150" fill="#1F2937" font-family="-apple-system, Inter, sans-serif" font-size="36" font-weight="800">读懂猫咪的</text>
+  <text x="24" y="195" fill="#FF8A4C" font-family="-apple-system, Inter, sans-serif" font-size="36" font-weight="800">每一个动作</text>
+  <text x="24" y="230" fill="#6B7280" font-family="-apple-system, Inter, sans-serif" font-size="16">拍张照片，立刻解读主子的真实想法。</text>
+  
+  <!-- Main Card -->
+  <rect x="24" y="270" width="327" height="400" rx="32" fill="white" stroke="#E5E7EB" stroke-dasharray="8 8" stroke-width="2"/>
+  <g filter="url(#shadow)">
+    <circle cx="187.5" cy="360" r="48" fill="#FF8A4C" fill-opacity="0.1"/>
+  </g>
+  <text x="187.5" y="375" font-size="40" text-anchor="middle">🐱</text>
+  
+  <text x="187.5" y="450" fill="#1F2937" font-family="-apple-system, Inter, sans-serif" font-size="20" font-weight="bold" text-anchor="middle">准备好照片了吗？</text>
+  <text x="187.5" y="475" fill="#6B7280" font-family="-apple-system, Inter, sans-serif" font-size="14" text-anchor="middle">支持端侧极速推理</text>
+  
+  <!-- Buttons -->
+  <rect x="40" y="520" width="295" height="56" rx="28" fill="#FF8A4C"/>
+  <text x="187.5" y="555" fill="white" font-family="-apple-system, Inter, sans-serif" font-size="16" font-weight="bold" text-anchor="middle">📸 立即拍照</text>
+  
+  <rect x="40" y="590" width="295" height="56" rx="28" fill="#F3F4F6"/>
+  <text x="187.5" y="625" fill="#1F2937" font-family="-apple-system, Inter, sans-serif" font-size="16" font-weight="bold" text-anchor="middle">🖼️ 从相册选择</text>
+  
+  <!-- Footer -->
+  <text x="187.5" y="750" fill="#9CA3AF" font-family="-apple-system, Inter, sans-serif" font-size="12" text-anchor="middle">非医疗诊断，仅供娱乐参考</text>
+  <text x="187.5" y="770" fill="#9CA3AF" font-family="-apple-system, Inter, sans-serif" font-size="12" text-anchor="middle">照片默认于 7 天后销毁，保护隐私</text>
+  
+  <defs>
+    <filter id="shadow" x="0" y="0" width="375" height="812" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="10" stdDeviation="20" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+</svg>

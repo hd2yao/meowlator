@@ -14,6 +14,7 @@
 - `infra`：数据库迁移与本地基础设施
 - `docs/implementation_nodes.md`：实现节点时间线
 - `tools/record_node.py`：实现节点记录工具
+- `.env.example`：环境变量配置示例
 
 ## 快速开始
 
@@ -23,7 +24,7 @@
 make up
 ```
 
-2. 本地 API 在设置 `MYSQL_DSN` 时自动使用 MySQL，否则回退内存仓储。环境变量参考 `/Users/dysania/program/meowlator/.env.example`。
+2. 本地 API 在设置 `MYSQL_DSN` 时自动使用 MySQL，否则回退内存仓储。环境变量参考 `.env.example`。
 
 3. 运行测试：
 
@@ -78,13 +79,13 @@ make export-onnx
 4. 可选：向推理服务加载先验分布：
 
 ```bash
-export MODEL_PRIORS_PATH=/Users/dysania/program/meowlator/ml/training/artifacts/mobilenetv3-small-v2/intent_priors.json
+export MODEL_PRIORS_PATH=ml/training/artifacts/mobilenetv3-small-v2/intent_priors.json
 ```
 
 5. 每次功能迭代后记录实现节点：
 
 ```bash
-python3 /Users/dysania/program/meowlator/tools/record_node.py \
+python3 tools/record_node.py \
   --node-id N007 \
   --version 1.0.0 \
   --area release-readiness \

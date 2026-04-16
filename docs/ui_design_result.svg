@@ -1,0 +1,66 @@
+<svg width="375" height="812" viewBox="0 0 375 812" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="375" height="812" rx="40" fill="#FAFAFA"/>
+  
+  <!-- Image Header -->
+  <rect x="0" y="0" width="375" height="380" fill="#D1D5DB"/>
+  <rect x="0" y="0" width="375" height="380" fill="url(#imgGradient)"/>
+  
+  <circle cx="187.5" cy="190" r="40" fill="white" fill-opacity="0.2"/>
+  <text x="187.5" y="195" fill="white" font-size="24" text-anchor="middle">📷 猫咪照片</text>
+
+  <!-- Status bar overlay -->
+  <text x="32" y="28" fill="white" font-family="-apple-system, Inter, sans-serif" font-size="14" font-weight="600">9:41</text>
+  <rect x="127" y="10" width="120" height="30" rx="15" fill="black"/>
+  <rect x="320" y="16" width="22" height="11" rx="3.5" stroke="white"/>
+  <rect x="322" y="18" width="15" height="7" rx="2" fill="white"/>
+  
+  <!-- Back Button -->
+  <circle cx="36" cy="68" r="16" fill="black" fill-opacity="0.3"/>
+  <path d="M40 60 L32 68 L40 76" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Inference Badge -->
+  <rect x="24" y="320" width="110" height="24" rx="12" fill="black" fill-opacity="0.5"/>
+  <circle cx="36" cy="332" r="4" fill="#34D399"/>
+  <text x="46" y="336" fill="white" font-family="-apple-system, Inter, sans-serif" font-size="12" font-weight="600">端侧极速推理</text>
+  
+  <rect x="142" y="320" width="48" height="24" rx="12" fill="black" fill-opacity="0.5"/>
+  <text x="166" y="336" fill="white" font-family="-apple-system, Inter, sans-serif" font-size="12" font-weight="600" text-anchor="middle">12ms</text>
+  
+  <!-- Result Card -->
+  <path d="M0 360 C0 360 0 360 0 360 C0 342.327 14.3269 328 32 328 L343 328 C360.673 328 375 342.327 375 360 L375 812 L0 812 L0 360 Z" fill="#FAFAFA" transform="translate(0, 32)"/>
+  
+  <rect x="163" y="404" width="48" height="6" rx="3" fill="#D1D5DB"/>
+  
+  <text x="24" y="450" fill="#FF8A4C" font-family="-apple-system, Inter, sans-serif" font-size="14" font-weight="bold" letter-spacing="1">WANT_PLAY</text>
+  <text x="24" y="490" fill="#1F2937" font-family="-apple-system, Inter, sans-serif" font-size="32" font-weight="800">我想玩耍！</text>
+  
+  <!-- Confidence -->
+  <rect x="300" y="440" width="55" height="60" rx="16" fill="#FF8A4C" fill-opacity="0.1"/>
+  <text x="327.5" y="475" fill="#FF8A4C" font-family="-apple-system, Inter, sans-serif" font-size="20" font-weight="900" text-anchor="middle">95%</text>
+  <text x="327.5" y="490" fill="#FF8A4C" font-family="-apple-system, Inter, sans-serif" font-size="10" font-weight="600" text-anchor="middle">置信度</text>
+  
+  <!-- Copywriting Card -->
+  <rect x="24" y="520" width="327" height="110" rx="20" fill="white" stroke="#F3F4F6" stroke-width="1"/>
+  <text x="44" y="555" font-size="18">✨</text>
+  <text x="70" y="555" fill="#1F2937" font-family="-apple-system, Inter, sans-serif" font-size="14" font-weight="bold">Meowlator 翻译</text>
+  
+  <text x="44" y="585" fill="#4B5563" font-family="-apple-system, Inter, sans-serif" font-size="15" line-height="1.6">"两脚兽，别在发呆了！我已经锁定你了，</text>
+  <text x="44" y="610" fill="#4B5563" font-family="-apple-system, Inter, sans-serif" font-size="15" line-height="1.6">快把逗猫棒拿出来，不然我可能要对你的键盘</text>
+  <text x="44" y="635" fill="#4B5563" font-family="-apple-system, Inter, sans-serif" font-size="15" line-height="1.6">下手了哦！" 😼</text>
+  
+  <!-- Feedback -->
+  <text x="187.5" y="690" fill="#9CA3AF" font-family="-apple-system, Inter, sans-serif" font-size="14" font-weight="600" text-anchor="middle">Meowlator 猜得准吗？</text>
+  
+  <rect x="24" y="710" width="155" height="56" rx="20" fill="white" stroke="#10B981" stroke-width="2"/>
+  <text x="101.5" y="744" fill="#10B981" font-family="-apple-system, Inter, sans-serif" font-size="16" font-weight="bold" text-anchor="middle">✅ 超准</text>
+
+  <rect x="195" y="710" width="155" height="56" rx="20" fill="white" stroke="#EF4444" stroke-width="2"/>
+  <text x="272.5" y="744" fill="#EF4444" font-family="-apple-system, Inter, sans-serif" font-size="16" font-weight="bold" text-anchor="middle">❌ 瞎说</text>
+
+  <defs>
+    <linearGradient id="imgGradient" x1="0" y1="0" x2="0" y2="380" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="black" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="black" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+</svg>

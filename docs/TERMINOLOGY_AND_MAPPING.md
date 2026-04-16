@@ -73,58 +73,49 @@ const (
 interface IntentDisplay {
   emoji: string;           // 表情符号
   label: string;           // 反馈弹窗标签
-  display: string;         // 结果页展示文案
-  description: string;     // 详细描述
+  headline: string;        // 结果页展示文案
 }
 
 const INTENT_DISPLAY_MAP: Record<string, IntentDisplay> = {
   FEEDING: {
     emoji: '🍖',
     label: '要吃的',
-    display: '进食',
-    description: '猫咪想吃东西'
+    headline: '我想进食！'
   },
   SEEK_ATTENTION: {
     emoji: '👋',
     label: '求抚摸',
-    display: '寻求关注',
-    description: '猫咪想要被抚摸或陪伴'
+    headline: '我想贴贴！'
   },
   WANT_PLAY: {
     emoji: '⚽️',
     label: '想玩耍',
-    display: '想玩耍',
-    description: '猫咪想要玩耍'
+    headline: '我想玩耍！'
   },
   WANT_DOOR_OPEN: {
     emoji: '🚪',
     label: '要开门',
-    display: '想开门',
-    description: '猫咪想要进出某个地方'
+    headline: '快给我开门！'
   },
   DEFENSIVE_ALERT: {
     emoji: '😾',
     label: '警惕防御',
-    display: '防御警戒',
-    description: '猫咪处于防御或警戒状态'
+    headline: '我在防御警戒！'
   },
   RELAX_SLEEP: {
     emoji: '💤',
     label: '放松睡觉',
-    display: '放松睡眠',
-    description: '猫咪想要放松或睡眠'
+    headline: '我想安心睡会儿。'
   },
   CURIOUS_OBSERVE: {
     emoji: '👀',
     label: '好奇观察',
-    display: '好奇观察',
-    description: '猫咪在好奇地观察周围'
+    headline: '我在观察情况。'
   },
   UNCERTAIN: {
     emoji: '❓',
     label: '摸鱼/不确定',
-    display: '不确定',
-    description: '无法确定猫咪的意图'
+    headline: '我也说不准喵。'
   }
 };
 ```
@@ -143,19 +134,19 @@ const INTENT_DISPLAY_MAP: Record<string, IntentDisplay> = {
 ❓ 摸鱼/不确定 (UNCERTAIN)
 ```
 
-**在结果页中**：使用 `display`
+**在结果页中**：使用 `headline`
 ```
 我想进食！
-我想寻求关注！
+我想贴贴！
 我想玩耍！
-我想开门！
+快给我开门！
 我在防御警戒！
-我想放松睡眠！
-我在好奇观察！
-我不确定...
+我想安心睡会儿。
+我在观察情况。
+我也说不准喵。
 ```
 
-**在 API 响应中**：使用 `emoji` + `display`
+**在 API 响应中**：使用 `emoji` + `headline`
 ```json
 {
   "intentTop3": [
@@ -164,7 +155,7 @@ const INTENT_DISPLAY_MAP: Record<string, IntentDisplay> = {
       "prob": 0.62
     }
   ],
-  "display": "🍖 进食"
+  "headline": "我想进食！"
 }
 ```
 
@@ -203,102 +194,42 @@ const INTENT_DISPLAY_MAP: Record<string, IntentDisplay> = {
 
 ---
 
-## 4. 资源模式选择
-
-### 模式 A：完整团队（推荐）
-
-**人员配置**：5.5 人
-- 前端工程师：1.5 人（第 1 周）→ 1 人（第 2 周后）
-- 后端工程师：1-2 人
-- 机器学习工程师：1 人
-- 运维工程师：0.5 人
-- 产品经理：0.5 人
-- QA 工程师：0.5 人
-
-**治理流程**：
-- 每日站会（15 分钟）
-- 周报与评审
-- 问题跟踪与升级（P0/P1/P2/P3）
-- 变更管理流程
-- 多角色审批
-
-**适用场景**：正式项目、多人团队
-
----
-
-### 模式 B：单人冲刺
-
-**人员配置**：1-2 人
-- 全栈工程师：1 人（主要）
-- 支持工程师：1 人（兼职）
-
-**治理流程**（简化）：
-- 每日自检清单（替代站会）
-- 周末总结（替代周报）
-- 自检清单（替代多角色审批）
-- 问题跟踪（简化为 P0/P1）
-
-**自检清单示例**：
-```
-【每日自检】
-- [ ] 代码编写进度
-- [ ] 单元测试通过
-- [ ] 代码审查（自审）
-- [ ] 阻塞问题记录
-- [ ] 风险预警
-
-【周末总结】
-- [ ] 本周完成的里程碑
-- [ ] 下周计划
-- [ ] 风险与问题
-- [ ] 成本消耗
-```
-
-**适用场景**：MVP 冲刺、单人或小团队
-
----
-
-## 5. 文档同步检查清单
+## 4. 文档同步检查清单
 
 ### 每周同步检查
 
-- [ ] research.md 与代码框架一致（net/http vs Gin）
-- [ ] research.md 默认值与 config.go 一致
-- [ ] research.md 表名与 SQL 迁移一致
+- [ ] docs/project_manual.md 与代码框架一致
+- [ ] docs/project_manual.md 默认值与 config.go 一致
+- [ ] docs/project_manual.md 表名与 SQL 迁移一致
 - [ ] UI 文案与 INTENT_DISPLAY_MAP 一致
 - [ ] 术语使用与术语字典一致
 - [ ] 性能/成本基线与 KPI_BASELINE.md 一致
 
 ### 发布前检查
 
-- [ ] plan.md 章节顺序正确
-- [ ] research.md 事实校正完成
+- [ ] docs/project_manual.md 章节顺序正确
 - [ ] UI 文案与枚举映射完整
 - [ ] 术语字典应用到所有文档
-- [ ] 资源模式选择明确
 - [ ] 性能/成本基线冻结
 
 ---
 
-## 6. 文件清单
+## 5. 文件清单
 
 | 文件 | 用途 | 维护频率 |
 |------|------|---------|
-| plan.md | 执行主计划 | 每周更新进度 |
-| research.md | 技术参考 | 每周同步代码 |
-| TERMINOLOGY_AND_MAPPING.md | 术语字典 + 意图映射 | 按需更新 |
-| KPI_BASELINE.md | 性能/成本基线 | 冻结（不更新） |
-| RESOURCE_MODES.md | 资源模式 | 按需更新 |
-| （待抽离）前端映射代码文件 | 当前尚未独立成文件，先以本文档示例为准 | 与本文档同步 |
+| docs/project_manual.md | 项目手册（主文档） | 每周更新进度 |
+| docs/api.md | API 文档 | 按需更新 |
+| docs/TERMINOLOGY_AND_MAPPING.md | 术语字典 + 意图映射 | 按需更新 |
+| docs/KPI_BASELINE.md | 性能/成本基线 | 冻结（不更新） |
+| docs/plans/*.md | 阶段性执行计划 | 按需更新 |
 
 ---
 
-## 7. 验收标准
+## 6. 验收标准
 
 - [ ] 所有术语使用一致
 - [ ] 意图映射表完整且正确
 - [ ] 性能/成本基线唯一且冻结
-- [ ] 资源模式 A/B 清晰可选
 - [ ] 文档同步检查清单建立
-- [ ] 前端映射文件抽离计划已记录（当前示例以本文档为准）
 - [ ] UI 设计稿与映射表一致
